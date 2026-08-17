@@ -258,10 +258,74 @@ pushing.
 5. Click **Deploy**. Wait ~1-2 minutes.
 6. You'll get a live URL like `resumeforge-ai.vercel.app` — this is now a real, working, deployed app.
 
-**One more Supabase step after deploying:** go back to Supabase →
-**Authentication → URL Configuration**, and add your Vercel URL to the
-**Redirect URLs** list, or magic-link login won't redirect correctly in
-production.
+### Supabase steps after deploying (both are required)
+
+Go to Supabase → **Authentication → URL Configuration**:
+
+1. **Redirect URLs** — add `https://your-app.vercel.app/**`. Keep
+   `http://localhost:3000/**` too, so local dev still works.
+2. **Site URL** — change it from `http://localhost:3000` to
+   `https://your-app.vercel.app`.
+
+Both matter, and skipping the second one fails in a confusing way. `Site URL`
+is the *fallback* Supabase uses when a requested redirect isn't on the allow
+list. So if the Vercel URL is missing from Redirect URLs while Site URL still
+says localhost, signing in on your live site silently sends you to
+`http://localhost:3000` — a dead address unless `npm run dev` happens to be
+running.
+
+**A sent email can't be fixed retroactively.** The destination is baked into
+the link when it's generated, so after changing these settings you must
+request a *fresh* magic link. Old emails keep pointing at the old target.
+
+### Email sending limits (you will hit this)
+
+Supabase's built-in email service is for testing only, and it's capped at a
+couple of messages **per hour, per project** — shared across all addresses,
+not per user. Testing sign-in a few times in a row returns:
+
+```
+email rate limit exceeded
+```
+
+Nothing is broken; wait for the window to roll over. To remove the cap
+properly, connect your own SMTP provider under **Project Settings →
+Authentication → SMTP Settings**. Resend, Postmark, SendGrid and Brevo all
+have free tiers that are ample here. Once custom SMTP is connected you can
+also raise the ceiling under **Authentication → Rate Limits**.
+
+Do this before showing the app to anyone else — on the built-in service, two
+friends trying to sign in within the same hour is enough to lock the third
+one out.
+
+#### The test-sender trap (read this before inviting anyone)
+
+Connecting SMTP is only half the job. Transactional providers start in a
+restricted test mode, and the restriction is specifically the one that hides
+itself during solo testing:
+
+> With an unverified sending domain, the provider will only deliver to the
+> email address that owns the provider account.
+
+So sign-in works perfectly for you and fails for everybody else, with
+Supabase reporting nothing more useful than `Error sending confirmation
+email`. The real error is in **Supabase → Logs → Auth Logs**.
+
+To send to anyone, pick whichever fits what you have:
+
+| You have | Use | Verify |
+|---|---|---|
+| A domain you own | Resend, Postmark | Add the domain, then its DNS records |
+| No domain | Brevo, SendGrid | Verify a *single sender address* — no DNS needed |
+| Neither, just testing | Gmail SMTP | An app password on your own account |
+
+Single-sender verification is the shortcut worth knowing: it authorises one
+address (your own Gmail is fine) as a `From:` and then lets you deliver to
+anyone, with no DNS work at all.
+
+Nothing about the app changes for multi-user use — Row Level Security already
+scopes every row to its owner, so each signed-in person sees only their own
+applications. Email delivery is the only gate.
 
 ---
 

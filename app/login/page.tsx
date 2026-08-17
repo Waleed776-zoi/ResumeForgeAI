@@ -2,7 +2,9 @@
 
 import { useState, Suspense, FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { describeAuthError } from "@/lib/auth-errors";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -23,7 +25,7 @@ function LoginForm() {
     });
 
     if (error) {
-      setError(error.message);
+      setError(describeAuthError(error));
     } else {
       setSent(true);
     }
@@ -31,11 +33,18 @@ function LoginForm() {
 
   if (sent) {
     return (
-      <p className="text-ink-soft text-sm">
-        Check your email for a magic link to sign in. Open it in this same
-        browser — the link sets a cookie, so it won&apos;t work if you open it
-        somewhere else.
-      </p>
+      <div className="text-ink-soft text-sm space-y-3">
+        <p className="text-ink">Check your email for a sign-in link.</p>
+        <p>
+          Open it in <strong>this same browser</strong> — the link completes a
+          handshake that started here, so it won&apos;t work anywhere else.
+        </p>
+        <p>
+          Use the <strong>newest</strong> email. Each link has its destination
+          baked in at send time, so older ones can still point somewhere you
+          don&apos;t expect.
+        </p>
+      </div>
     );
   }
 
@@ -49,7 +58,12 @@ function LoginForm() {
         placeholder="you@example.com"
         className="w-full border border-line rounded px-4 py-3 text-sm bg-white focus:border-accent outline-none"
       />
-      {error && <p className="text-flag text-sm">{error}</p>}
+      {error && (
+        <div className="border border-flag/40 bg-flag/5 rounded px-4 py-3 flex gap-3">
+          <AlertTriangle size={18} className="text-flag shrink-0 mt-0.5" />
+          <p className="text-flag text-sm leading-relaxed">{error}</p>
+        </div>
+      )}
       <button
         type="submit"
         className="w-full bg-accent text-white px-6 py-3 rounded font-medium hover:bg-accent/90 transition-colors"
