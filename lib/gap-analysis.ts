@@ -72,6 +72,8 @@ const SOFT_SKILL_PATTERNS = [
   "work ethic",
   "self motivated",
   "organizational skills",
+  "Time Management",
+  
 ];
 
 const FOUNDATIONAL_PATTERNS = [
