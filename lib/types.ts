@@ -13,6 +13,12 @@ export interface ResumeJson {
   experience: ExperienceEntry[];
   education: string[];
   certifications: string[];
+  /**
+   * One verbatim citation per entry. Like education and certifications —
+   * and unlike everything in TailoredOutput — these are facts the tailoring
+   * model is never allowed to touch, only carry through.
+   */
+  publications: string[];
 }
 
 export interface JobJson {

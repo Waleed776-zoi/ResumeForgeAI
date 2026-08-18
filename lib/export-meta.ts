@@ -2,7 +2,7 @@ import type { ResumeJson } from "@/lib/types";
 
 type ResumeMeta = Pick<
   ResumeJson,
-  "name" | "contact" | "education" | "certifications"
+  "name" | "contact" | "education" | "certifications" | "publications"
 >;
 
 /**
@@ -25,6 +25,9 @@ export function resolveResumeMeta(application: {
     contact: base?.contact?.trim() || "",
     education: base?.education ?? [],
     certifications: base?.certifications ?? [],
+    // Absent on rows parsed before publications were extracted; those
+    // exports simply omit the section rather than failing.
+    publications: base?.publications ?? [],
   };
 }
 

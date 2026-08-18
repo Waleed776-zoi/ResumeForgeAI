@@ -96,7 +96,11 @@ export async function POST(req: NextRequest) {
           generateJson<ResumeJson>({
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
-            userContent: `Extract structured data from this resume. Return JSON matching: { "name": string, "contact": string, "summary": string, "skills": string[], "experience": [{"title": string, "company": string, "dates": string, "bullets": string[]}], "education": string[], "certifications": string[] }\n\n<document>${resumeRawText}</document>`,
+            userContent: `Extract structured data from this resume. Return JSON matching: { "name": string, "contact": string, "summary": string, "skills": string[], "experience": [{"title": string, "company": string, "dates": string, "bullets": string[]}], "education": string[], "certifications": string[], "publications": string[] }
+
+For "publications": one entry per cited work, copied VERBATIM as a single string — keep the author list, title, venue/journal, date and DOI exactly as written. Do not renumber, reformat, abbreviate, or summarise them. A citation is a factual record and must survive unchanged. Include only formal citations here; profile links (ORCID, ResearchGate, Google Scholar) belong in "contact". Return an empty array if the resume lists none.
+
+<document>${resumeRawText}</document>`,
           }),
           generateJson<JobJson>({
             model: "fast",
