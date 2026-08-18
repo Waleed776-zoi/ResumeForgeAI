@@ -35,13 +35,62 @@ const NETWORK_ERROR_FRAGMENTS = [
   "terminated",
 ];
 
+/**
+ * An HTTP failure from any provider, with the status already extracted.
+ *
+ * Providers that speak plain REST (Groq) can report their status exactly;
+ * only the Gemini SDK forces us to scrape it out of prose.
+ */
+export class ProviderHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly retryAfterMs?: number
+  ) {
+    super(message);
+    this.name = "ProviderHttpError";
+  }
+}
+
 export function statusFromError(err: unknown): number | undefined {
+  if (err instanceof ProviderHttpError) return err.status;
   if (!(err instanceof Error)) return undefined;
   // The SDK stringifies upstream failures as:
   //   [GoogleGenerativeAI Error]: Error fetching from <url>: [503 Service
   //   Unavailable] This model is currently experiencing high demand...
   const match = err.message.match(/\[(\d{3})\s/);
   return match ? Number(match[1]) : undefined;
+}
+
+/**
+ * How long the provider asked us to wait, if it said.
+ *
+ * Gemini puts it in prose ("Please retry in 48.858545774s"); Groq returns a
+ * Retry-After header, which the adapter converts before throwing. Honouring
+ * it matters because guessing shorter just spends quota on a request that is
+ * guaranteed to be refused.
+ */
+export function retryAfterMs(err: unknown): number | undefined {
+  if (err instanceof ProviderHttpError && err.retryAfterMs !== undefined) {
+    return err.retryAfterMs;
+  }
+  if (!(err instanceof Error)) return undefined;
+  const match = err.message.match(/retry in ([\d.]+)s/i);
+  return match ? Math.ceil(Number(match[1]) * 1000) : undefined;
+}
+
+/**
+ * True when the failure means "this specific model is unavailable to you
+ * right now" — quota exhausted or overloaded.
+ *
+ * These must NOT be retried against the same model. A 429 on a per-minute or
+ * per-day quota cannot succeed by asking again sooner, and each attempt
+ * spends more of the allowance. The correct response is to fall through to a
+ * different model, whose limits are counted separately.
+ */
+export function shouldSwitchModel(err: unknown): boolean {
+  const status = statusFromError(err);
+  return status === 429 || status === 503 || status === 529;
 }
 
 export function isNetworkError(err: unknown): boolean {

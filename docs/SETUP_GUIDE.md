@@ -378,10 +378,99 @@ Two deliberate decisions worth keeping:
 To tune it, edit the weights and `ACTION_VERBS` in `lib/ats.ts` and run
 `npm run test`.
 
+## Model providers and fallback
+
+The app is not tied to one model. `lib/model-chain.ts` defines an ordered
+chain per tier, and `lib/llm.ts` walks it until something answers.
+
+**The rule that matters: a rate limit is a reason to change model, not to ask
+the same one again.** Gemini's free tier counts quota *per model*, so when
+`gemini-3.5-flash` returns `limit: 20`, retrying it cannot succeed and each
+attempt spends more of an allowance that is already empty. Those failures
+(429, 503, 529) fall straight through to the next candidate. Only genuinely
+transient faults — 5xx, dropped sockets, truncated JSON — get a second attempt
+against the same model.
+
+Chains are ordered for *independence*, not just quality. Each entry should
+fail for a different reason than the one above it:
+
+1. a pinned Gemini model — best known quality for these prompts
+2. a **different** Gemini model — separate quota bucket, same provider
+3. **Groq** — separate provider entirely, so a Google outage doesn't reach it
+
+### Adding Groq (free, no credit card — recommended)
+
+1. Sign up at [console.groq.com](https://console.groq.com).
+2. **API Keys → Create API Key**, copy the value.
+3. Add `GROQ_API_KEY=...` to `.env.local`, and to Vercel's environment
+   variables for the deployed app.
+4. Restart the dev server.
+
+That's the whole integration — Groq speaks the OpenAI chat-completions
+format, so it's a plain `fetch` with no SDK and no new dependency. It runs
+open models (Llama 3.1/3.3) on custom silicon and is markedly faster than
+Gemini for this workload.
+
+**Groq is optional.** With no key set, its candidates are skipped silently and
+the app runs on Gemini alone, exactly as before.
+
+To see what each key can actually call:
+
+```bash
+curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"
+curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+```
+
+Being listed is not proof of being callable — retired models still appear.
+Send one real request before promoting a model up a chain.
+
+The progress panel names whichever model answered, so a silent substitution
+is visible rather than invisible.
+
+### Other free options
+
+If you want a third provider, all of these are free and OpenAI-compatible, so
+each is a small addition to `lib/providers.ts`: **Cerebras** (very fast),
+**Mistral La Plateforme**, and **OpenRouter** (whose `:free` model IDs pool
+several vendors behind one key).
+
+## Resume templates
+
+Three, picked on the results page: **Classic** (centred serif, ruled sections
+— traditional and academic), **Modern** (left-aligned sans, unruled, airy —
+software and startups), and **Compact** (tight type and margins — long
+histories that would otherwise run to a third page).
+
+A template is *only* styling. Both exporters render the same
+`ResumeDocument`, so switching template can never change which sections
+appear, their order, or a single word of their content. All three are
+single-column with no tables or images, so none of them costs you
+parseability.
+
+Specs live in `generators/templates.ts`, measured in **points** — the one unit
+both renderers convert from (pdf-lib uses points; Word wants twips at pt × 20
+and half-points at pt × 2). Defining each template once in a shared unit is
+what stops the PDF and DOCX drifting apart visually.
+
+To add a fourth: add an entry to `TEMPLATES`, add its id to `TEMPLATE_IDS`,
+add a thumbnail branch in `components/TemplatePicker.tsx`, then render and
+eyeball all of them:
+
+```bash
+RENDER_SAMPLES=1 npx vitest run tests/render-sample.spec.ts
+```
+
+That writes `sample-resume-<id>.pdf` and `.docx` per template (all
+gitignored). Check the PDF *and* the DOCX — they use different layout engines
+and only the PDF's spacing is computed by hand.
+
+The selection travels as `?template=` on the export URLs and is remembered in
+`localStorage`, so nothing is stored per application and any unrecognised
+value silently falls back to Classic rather than breaking a download.
+
 ## What's deliberately NOT built yet (see roadmap for the reasoning)
 
 - Browser extension / job-URL scraping
-- Multiple resume templates
 - Billing/Stripe
 - OCR for scanned PDFs
 

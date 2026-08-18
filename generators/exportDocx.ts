@@ -13,72 +13,89 @@ import {
   type ResumeSection,
   type ResumeMeta,
 } from "./resumeModel";
+import { resolveTemplate, type ResumeTemplate } from "./templates";
 
 /**
- * DOCX export, styled to match the PDF.
+ * DOCX export, styled from the same template spec as the PDF.
  *
- * Both read the same ResumeDocument, so they can't disagree about content;
- * this file only decides how Word should draw it. Unlike the PDF — where
- * every rule and alignment is computed by hand — Word has native tab stops,
- * paragraph borders and justification, so the layout is declared rather than
- * measured.
+ * Both read the same ResumeDocument, so they can't disagree about content,
+ * and both read the same ResumeTemplate, so they can't disagree about style
+ * either. This file's only job is translating a point-based spec into Word's
+ * units and letting Word do the layout natively — unlike the PDF, where every
+ * rule and alignment is measured by hand.
  *
  * Still single-column with no tables: recruiters routinely edit the DOCX
  * before forwarding it, and a table-based resume falls apart the moment
  * someone changes a font size.
  */
 
-// Word measures in twips (1/20 pt) and half-points. Named here so the
-// numbers below read as design decisions rather than magic.
+// Word measures in twips (1/20 pt) and half-points.
 const twip = (points: number) => Math.round(points * 20);
 const halfPt = (points: number) => Math.round(points * 2);
 
-const MARGIN_PT = 56;
-const CONTENT_WIDTH_TWIP = twip(612 - MARGIN_PT * 2);
+/**
+ * Word's "single" line spacing (240) already bakes in natural leading of
+ * roughly 1.2×, so a template leading of 1.34 must not be sent as 240 × 1.34
+ * or the DOCX comes out visibly looser than the PDF.
+ */
+const lineFor = (leading: number) => Math.round((240 * leading) / 1.2);
 
-const FONT = "Times New Roman";
+const PAGE_WIDTH_PT = 612;
 const INK = "1C2430";
 const SOFT = "545C69";
 const RULE = "B7B5AF";
+const ACCENT = "2F5D50";
 
-const SIZE = {
-  name: halfPt(19),
-  contact: halfPt(9),
-  section: halfPt(9.6),
-  role: halfPt(10.2),
-  meta: halfPt(9),
-  body: halfPt(9.6),
-};
+const fontFor = (t: ResumeTemplate) =>
+  t.family === "serif" ? "Times New Roman" : "Arial";
 
-function sectionHeading(text: string): Paragraph {
+const headingColor = (t: ResumeTemplate) =>
+  t.headingColor === "accent" ? ACCENT : INK;
+
+function sectionHeading(t: ResumeTemplate, text: string): Paragraph {
   return new Paragraph({
-    spacing: { before: twip(11), after: twip(5) },
+    spacing: { before: twip(t.space.beforeSection + 5), after: twip(5) },
     // The rule under a heading is a paragraph border, so it stays attached
-    // to the heading if the document reflows.
-    border: {
-      bottom: { style: BorderStyle.SINGLE, size: 5, color: RULE, space: 3 },
-    },
+    // to the heading if the document reflows. Word can't underline just the
+    // heading's width, so "short" falls back to no rule rather than faking
+    // it with a table.
+    border:
+      t.sectionRule === "full"
+        ? {
+            bottom: {
+              style: BorderStyle.SINGLE,
+              size: 5,
+              color: RULE,
+              space: 3,
+            },
+          }
+        : undefined,
     keepNext: true,
     children: [
       new TextRun({
         text: text.toUpperCase(),
         bold: true,
-        size: SIZE.section,
-        font: FONT,
-        color: INK,
-        characterSpacing: twip(1.1),
+        size: halfPt(t.size.section),
+        font: fontFor(t),
+        color: headingColor(t),
+        characterSpacing: twip(t.tracking.section),
       }),
     ],
   });
 }
 
-function bullet(text: string): Paragraph {
+function bullet(t: ResumeTemplate, text: string): Paragraph {
   return new Paragraph({
     bullet: { level: 0 },
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: twip(2), line: 276 }, // 1.15 line spacing
+    spacing: { after: twip(2), line: lineFor(t.leading) },
     children: [
-      new TextRun({ text, size: SIZE.body, font: FONT, color: INK }),
+      new TextRun({
+        text,
+        size: halfPt(t.size.body),
+        font: fontFor(t),
+        color: INK,
+      }),
     ],
   });
 }
@@ -89,41 +106,43 @@ function bullet(text: string): Paragraph {
  * indent is stable, matches the PDF exactly, and survives a recruiter
  * reordering paragraphs.
  */
-function citation(text: string, index: number): Paragraph {
+function citation(t: ResumeTemplate, text: string, index: number): Paragraph {
   const hang = twip(18);
 
   return new Paragraph({
     indent: { left: hang, hanging: hang },
     alignment: AlignmentType.JUSTIFIED,
-    spacing: { after: twip(4), line: 276 },
+    spacing: { after: twip(4), line: lineFor(t.leading) },
     // Word's equivalent of the PDF's keep-together measurement: never split
     // a single citation across a page boundary.
     keepLines: true,
     children: [
       new TextRun({
         text: `[${index + 1}]  ${text}`,
-        size: SIZE.body,
-        font: FONT,
+        size: halfPt(t.size.body),
+        font: fontFor(t),
         color: INK,
       }),
     ],
   });
 }
 
-function renderSection(section: ResumeSection): Paragraph[] {
-  const out: Paragraph[] = [sectionHeading(section.heading)];
+function renderSection(t: ResumeTemplate, section: ResumeSection): Paragraph[] {
+  const out: Paragraph[] = [sectionHeading(t, section.heading)];
+  const font = fontFor(t);
+  const contentWidthTwip = twip(PAGE_WIDTH_PT - t.margin * 2);
 
   switch (section.kind) {
     case "prose":
       out.push(
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: twip(4), line: 276 },
+          spacing: { after: twip(4), line: lineFor(t.leading) },
           children: [
             new TextRun({
               text: section.body,
-              size: SIZE.body,
-              font: FONT,
+              size: halfPt(t.size.body),
+              font,
               color: INK,
             }),
           ],
@@ -134,12 +153,12 @@ function renderSection(section: ResumeSection): Paragraph[] {
     case "inline":
       out.push(
         new Paragraph({
-          spacing: { after: twip(4), line: 276 },
+          spacing: { after: twip(4), line: lineFor(t.leading) },
           children: [
             new TextRun({
               text: section.items.join("  ·  "),
-              size: SIZE.body,
-              font: FONT,
+              size: halfPt(t.size.body),
+              font,
               color: INK,
             }),
           ],
@@ -148,11 +167,11 @@ function renderSection(section: ResumeSection): Paragraph[] {
       break;
 
     case "list":
-      out.push(...section.items.map(bullet));
+      out.push(...section.items.map((item) => bullet(t, item)));
       break;
 
     case "numbered":
-      out.push(...section.items.map(citation));
+      out.push(...section.items.map((item, i) => citation(t, item, i)));
       break;
 
     case "experience":
@@ -162,23 +181,24 @@ function renderSection(section: ResumeSection): Paragraph[] {
         // measuring, but declarative and reflow-safe.
         out.push(
           new Paragraph({
-            spacing: { before: twip(i === 0 ? 0 : 8), after: twip(1) },
-            tabStops: [
-              { type: TabStopType.RIGHT, position: CONTENT_WIDTH_TWIP },
-            ],
+            spacing: {
+              before: twip(i === 0 ? 0 : t.space.betweenRoles),
+              after: twip(1),
+            },
+            tabStops: [{ type: TabStopType.RIGHT, position: contentWidthTwip }],
             keepNext: true,
             children: [
               new TextRun({
                 text: role.title,
                 bold: true,
-                size: SIZE.role,
-                font: FONT,
+                size: halfPt(t.size.role),
+                font,
                 color: INK,
               }),
               new TextRun({
                 text: `\t${role.dates}`,
-                size: SIZE.meta,
-                font: FONT,
+                size: halfPt(t.size.meta),
+                font,
                 color: SOFT,
               }),
             ],
@@ -194,8 +214,8 @@ function renderSection(section: ResumeSection): Paragraph[] {
                 new TextRun({
                   text: role.company,
                   italics: true,
-                  size: SIZE.meta,
-                  font: FONT,
+                  size: halfPt(t.size.meta),
+                  font,
                   color: SOFT,
                 }),
               ],
@@ -203,7 +223,7 @@ function renderSection(section: ResumeSection): Paragraph[] {
           );
         }
 
-        out.push(...role.bullets.map(bullet));
+        out.push(...role.bullets.map((b) => bullet(t, b)));
       });
       break;
   }
@@ -213,22 +233,27 @@ function renderSection(section: ResumeSection): Paragraph[] {
 
 export async function generateResumeDocx(
   tailored: TailoredOutput,
-  originalMeta: ResumeMeta
+  originalMeta: ResumeMeta,
+  templateId?: string
 ): Promise<Buffer> {
+  const t = resolveTemplate(templateId);
   const resume = buildResumeDocument(tailored, originalMeta);
+  const font = fontFor(t);
+  const align =
+    t.headerAlign === "center" ? AlignmentType.CENTER : AlignmentType.LEFT;
 
   const masthead: Paragraph[] = [
     new Paragraph({
-      alignment: AlignmentType.CENTER,
+      alignment: align,
       spacing: { after: twip(3) },
       children: [
         new TextRun({
-          text: resume.name.toUpperCase(),
+          text: t.uppercaseName ? resume.name.toUpperCase() : resume.name,
           bold: true,
-          size: SIZE.name,
-          font: FONT,
+          size: halfPt(t.size.name),
+          font,
           color: INK,
-          characterSpacing: twip(1.6),
+          characterSpacing: twip(t.tracking.name),
         }),
       ],
     }),
@@ -237,13 +262,13 @@ export async function generateResumeDocx(
   if (resume.contact) {
     masthead.push(
       new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { after: twip(6) },
+        alignment: align,
+        spacing: { after: twip(t.space.afterMasthead) },
         children: [
           new TextRun({
             text: resume.contact,
-            size: SIZE.contact,
-            font: FONT,
+            size: halfPt(t.size.contact),
+            font,
             color: SOFT,
           }),
         ],
@@ -259,16 +284,16 @@ export async function generateResumeDocx(
         properties: {
           page: {
             margin: {
-              top: twip(MARGIN_PT),
-              bottom: twip(MARGIN_PT),
-              left: twip(MARGIN_PT),
-              right: twip(MARGIN_PT),
+              top: twip(t.margin),
+              bottom: twip(t.margin),
+              left: twip(t.margin),
+              right: twip(t.margin),
             },
           },
         },
         children: [
           ...masthead,
-          ...resume.sections.flatMap(renderSection),
+          ...resume.sections.flatMap((s) => renderSection(t, s)),
         ],
       },
     ],
@@ -283,8 +308,12 @@ export async function generateResumeDocx(
  */
 export async function generateCoverLetterDocx(
   coverLetter: string,
-  name: string
+  name: string,
+  templateId?: string
 ): Promise<Buffer> {
+  const t = resolveTemplate(templateId);
+  const font = fontFor(t);
+
   const body = coverLetter
     .split(/\n{2,}/)
     .map((p) => p.trim())
@@ -293,9 +322,14 @@ export async function generateCoverLetterDocx(
       (text) =>
         new Paragraph({
           alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: twip(9), line: 300 },
+          spacing: { after: twip(9), line: lineFor(t.leading + 0.1) },
           children: [
-            new TextRun({ text, size: SIZE.body, font: FONT, color: INK }),
+            new TextRun({
+              text,
+              size: halfPt(t.size.body),
+              font,
+              color: INK,
+            }),
           ],
         })
     );
@@ -322,8 +356,8 @@ export async function generateCoverLetterDocx(
               new TextRun({
                 text: name,
                 bold: true,
-                size: SIZE.role,
-                font: FONT,
+                size: halfPt(t.size.role),
+                font,
                 color: INK,
               }),
             ],

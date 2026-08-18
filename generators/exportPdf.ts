@@ -5,6 +5,7 @@ import {
   type ResumeSection,
   type ResumeMeta,
 } from "./resumeModel";
+import { resolveTemplate, type ResumeTemplate } from "./templates";
 
 /**
  * Typeset resume export.
@@ -17,29 +18,19 @@ import {
  * both a person and a machine.
  *
  * pdf-lib gives us primitives, not a layout engine, so word wrapping,
- * justification, letter-spacing and page breaks are implemented below.
+ * justification, letter-spacing and page breaks are implemented below. The
+ * template supplies every measurement; nothing here is hard-coded to one look.
  */
 
 const PAGE = { width: 612, height: 792 }; // US Letter
-const MARGIN = 56;
-const CONTENT_WIDTH = PAGE.width - MARGIN * 2;
 
-const SIZE = {
-  name: 19,
-  contact: 8.8,
-  section: 9.6,
-  role: 10.2,
-  meta: 8.8,
-  body: 9.6,
-};
-
-const LEADING = 1.34; // multiple of font size
 const INK = rgb(0.11, 0.14, 0.19);
 const SOFT = rgb(0.35, 0.39, 0.46);
 const RULE = rgb(0.72, 0.71, 0.67);
+const ACCENT = rgb(0.184, 0.365, 0.314); // matches the app's forest accent
 
-const BULLET_INDENT = 11;
 const BULLET_GLYPH = "•";
+const MIN_HANG = 11;
 
 /** Widest gap we'll stretch a justified line to before it looks broken. */
 const MAX_JUSTIFY_STRETCH = 2.6;
@@ -51,16 +42,21 @@ interface Ctx {
   regular: PDFFont;
   bold: PDFFont;
   italic: PDFFont;
+  t: ResumeTemplate;
+  contentWidth: number;
 }
+
+const leadingOf = (ctx: Ctx, size?: number) =>
+  (size ?? ctx.t.size.body) * ctx.t.leading;
 
 function newPage(ctx: Ctx) {
   ctx.page = ctx.doc.addPage([PAGE.width, PAGE.height]);
-  ctx.y = PAGE.height - MARGIN;
+  ctx.y = PAGE.height - ctx.t.margin;
 }
 
 /** Break to a new page if `needed` points won't fit above the bottom margin. */
 function ensure(ctx: Ctx, needed: number) {
-  if (ctx.y - needed < MARGIN) newPage(ctx);
+  if (ctx.y - needed < ctx.t.margin) newPage(ctx);
 }
 
 function widthOf(font: PDFFont, text: string, size: number) {
@@ -146,11 +142,11 @@ interface ParagraphOpts {
 
 function drawParagraph(ctx: Ctx, text: string, opts: ParagraphOpts = {}) {
   const font = opts.font ?? ctx.regular;
-  const size = opts.size ?? SIZE.body;
+  const size = opts.size ?? ctx.t.size.body;
   const color = opts.color ?? INK;
-  const x = opts.x ?? MARGIN;
-  const width = opts.width ?? CONTENT_WIDTH;
-  const leading = size * LEADING;
+  const x = opts.x ?? ctx.t.margin;
+  const width = opts.width ?? ctx.contentWidth;
+  const leading = leadingOf(ctx, size);
 
   const lines = wrap(font, text, size, width);
 
@@ -183,7 +179,9 @@ function drawTracked(
     chars.reduce((sum, c) => sum + widthOf(font, c, size), 0) +
     tracking * Math.max(0, chars.length - 1);
 
-  let cursor = centered ? MARGIN + (CONTENT_WIDTH - total) / 2 : MARGIN;
+  let cursor = centered
+    ? ctx.t.margin + (ctx.contentWidth - total) / 2
+    : ctx.t.margin;
 
   for (const char of chars) {
     ctx.page.drawText(char, { x: cursor, y: ctx.y, size, font, color });
@@ -193,48 +191,58 @@ function drawTracked(
   return total;
 }
 
-/** Section heading in tracked small caps, underscored by a hairline rule. */
 function drawSectionHeading(ctx: Ctx, heading: string) {
+  const { t } = ctx;
   // Keep the heading with at least its first line of content.
-  ensure(ctx, SIZE.section * LEADING + 26);
-  ctx.y -= 6;
+  ensure(ctx, leadingOf(ctx, t.size.section) + 26);
+  ctx.y -= t.space.beforeSection;
 
-  drawTracked(ctx, heading.toUpperCase(), {
+  const width = drawTracked(ctx, heading.toUpperCase(), {
     font: ctx.bold,
-    size: SIZE.section,
-    color: INK,
-    tracking: 1.1,
+    size: t.size.section,
+    color: t.headingColor === "accent" ? ACCENT : INK,
+    tracking: t.tracking.section,
   });
 
+  // Descend past the heading's own baseline BEFORE anything else. This used
+  // to sit inside the rule branch, so unruled templates dropped only
+  // `afterRule` and their headings overprinted the first line of content.
   ctx.y -= 5;
-  ctx.page.drawLine({
-    start: { x: MARGIN, y: ctx.y },
-    end: { x: MARGIN + CONTENT_WIDTH, y: ctx.y },
-    thickness: 0.6,
-    color: RULE,
-  });
-  ctx.y -= 11;
+
+  if (t.sectionRule !== "none") {
+    ctx.page.drawLine({
+      start: { x: t.margin, y: ctx.y },
+      end: {
+        x: t.margin + (t.sectionRule === "short" ? width : ctx.contentWidth),
+        y: ctx.y,
+      },
+      thickness: 0.6,
+      color: RULE,
+    });
+  }
+
+  ctx.y -= t.space.afterRule;
 }
 
 /** Title on the left, dates flush right, sharing one baseline. */
 function drawRoleLine(ctx: Ctx, title: string, dates: string) {
-  const leading = SIZE.role * LEADING;
+  const leading = leadingOf(ctx, ctx.t.size.role);
   ensure(ctx, leading * 2);
 
   ctx.page.drawText(title, {
-    x: MARGIN,
+    x: ctx.t.margin,
     y: ctx.y,
-    size: SIZE.role,
+    size: ctx.t.size.role,
     font: ctx.bold,
     color: INK,
   });
 
   if (dates) {
-    const w = widthOf(ctx.regular, dates, SIZE.meta);
+    const w = widthOf(ctx.regular, dates, ctx.t.size.meta);
     ctx.page.drawText(dates, {
-      x: MARGIN + CONTENT_WIDTH - w,
+      x: ctx.t.margin + ctx.contentWidth - w,
       y: ctx.y,
-      size: SIZE.meta,
+      size: ctx.t.size.meta,
       font: ctx.regular,
       color: SOFT,
     });
@@ -254,26 +262,26 @@ function drawMarkedItem(
   text: string,
   keepTogether = false
 ) {
-  const leading = SIZE.body * LEADING;
-
+  const leading = leadingOf(ctx);
   const indent = Math.max(
-    BULLET_INDENT,
-    widthOf(ctx.regular, marker, SIZE.body) + 5
+    MIN_HANG,
+    widthOf(ctx.regular, marker, ctx.t.size.body) + 5
   );
 
   // A citation is one unit of meaning — splitting "IEEE Xplore, ICETECC,
   // Apr 2025" onto the next page reads as a second, broken entry. Measure
   // the whole item first and move it wholesale if it won't fit.
   const needed = keepTogether
-    ? wrap(ctx.regular, text, SIZE.body, CONTENT_WIDTH - indent).length * leading
+    ? wrap(ctx.regular, text, ctx.t.size.body, ctx.contentWidth - indent)
+        .length * leading
     : leading;
 
   ensure(ctx, needed);
 
   ctx.page.drawText(marker, {
-    x: MARGIN + 2,
+    x: ctx.t.margin + 2,
     y: ctx.y,
-    size: SIZE.body,
+    size: ctx.t.size.body,
     font: ctx.regular,
     color: SOFT,
   });
@@ -281,8 +289,8 @@ function drawMarkedItem(
   // Hanging indent: wrapped lines align under the first character of the
   // text, not back under the marker.
   drawParagraph(ctx, text, {
-    x: MARGIN + indent,
-    width: CONTENT_WIDTH - indent,
+    x: ctx.t.margin + indent,
+    width: ctx.contentWidth - indent,
     justify: true,
   });
 }
@@ -315,13 +323,13 @@ function drawSection(ctx: Ctx, section: ResumeSection) {
 
     case "experience":
       section.roles.forEach((role, i) => {
-        if (i > 0) ctx.y -= 7;
+        if (i > 0) ctx.y -= ctx.t.space.betweenRoles;
         drawRoleLine(ctx, role.title, role.dates);
 
         if (role.company) {
           drawParagraph(ctx, role.company, {
             font: ctx.italic,
-            size: SIZE.meta,
+            size: ctx.t.size.meta,
             color: SOFT,
           });
         }
@@ -332,60 +340,72 @@ function drawSection(ctx: Ctx, section: ResumeSection) {
       break;
   }
 
-  ctx.y -= 6;
+  ctx.y -= ctx.t.space.afterSection;
 }
 
 export async function generateResumePdf(
   tailored: TailoredOutput,
-  originalMeta: ResumeMeta
+  originalMeta: ResumeMeta,
+  templateId?: string
 ): Promise<Buffer> {
+  const t = resolveTemplate(templateId);
   const resume = buildResumeDocument(tailored, originalMeta);
   const doc = await PDFDocument.create();
 
+  const serif = t.family === "serif";
   const ctx: Ctx = {
     doc,
     page: doc.addPage([PAGE.width, PAGE.height]),
-    y: PAGE.height - MARGIN,
-    regular: await doc.embedFont(StandardFonts.TimesRoman),
-    bold: await doc.embedFont(StandardFonts.TimesRomanBold),
-    italic: await doc.embedFont(StandardFonts.TimesRomanItalic),
+    y: PAGE.height - t.margin,
+    regular: await doc.embedFont(
+      serif ? StandardFonts.TimesRoman : StandardFonts.Helvetica
+    ),
+    bold: await doc.embedFont(
+      serif ? StandardFonts.TimesRomanBold : StandardFonts.HelveticaBold
+    ),
+    italic: await doc.embedFont(
+      serif ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique
+    ),
+    t,
+    contentWidth: PAGE.width - t.margin * 2,
   };
 
   doc.setTitle(`${resume.name} — Resume`);
   doc.setAuthor(resume.name);
   doc.setProducer("ResumeForge AI");
 
-  // --- Masthead: name and contact, centred ---
-  ctx.y -= SIZE.name;
+  // --- Masthead ---
+  const centred = t.headerAlign === "center";
+  ctx.y -= t.size.name;
   drawTracked(
     ctx,
-    resume.name.toUpperCase(),
-    { font: ctx.bold, size: SIZE.name, color: INK, tracking: 1.6 },
-    true
+    t.uppercaseName ? resume.name.toUpperCase() : resume.name,
+    { font: ctx.bold, size: t.size.name, color: INK, tracking: t.tracking.name },
+    centred
   );
-  ctx.y -= SIZE.contact * LEADING + 4;
+  ctx.y -= leadingOf(ctx, t.size.contact) + 4;
 
   if (resume.contact) {
     for (const words of wrap(
       ctx.regular,
       resume.contact,
-      SIZE.contact,
-      CONTENT_WIDTH
+      t.size.contact,
+      ctx.contentWidth
     )) {
       const line = words.join(" ");
-      const w = widthOf(ctx.regular, line, SIZE.contact);
+      const w = widthOf(ctx.regular, line, t.size.contact);
       ctx.page.drawText(line, {
-        x: MARGIN + (CONTENT_WIDTH - w) / 2,
+        x: centred ? t.margin + (ctx.contentWidth - w) / 2 : t.margin,
         y: ctx.y,
-        size: SIZE.contact,
+        size: t.size.contact,
         font: ctx.regular,
         color: SOFT,
       });
-      ctx.y -= SIZE.contact * LEADING;
+      ctx.y -= leadingOf(ctx, t.size.contact);
     }
   }
 
-  ctx.y -= 6;
+  ctx.y -= t.space.afterMasthead;
 
   for (const section of resume.sections) drawSection(ctx, section);
 

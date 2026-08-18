@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GapAnalysisPanel } from "@/components/GapAnalysisPanel";
 import { IntegrityBadge } from "@/components/IntegrityBadge";
 import { AtsPanel } from "@/components/AtsPanel";
+import { TemplatePicker } from "@/components/TemplatePicker";
 import { atsReport } from "@/lib/ats";
 import { applicationTitle } from "@/lib/display";
 import { notFound } from "next/navigation";
@@ -102,20 +103,7 @@ export default async function ResultsPage({
         </p>
       </section>
 
-      <div className="flex flex-wrap gap-3">
-        <a
-          href={`/api/export/docx?id=${application.id}`}
-          className="bg-accent text-white px-6 py-3 rounded font-medium hover:bg-accent/90 transition-colors text-sm"
-        >
-          Download DOCX
-        </a>
-        <a
-          href={`/api/export/pdf?id=${application.id}`}
-          className="border border-line px-6 py-3 rounded font-medium hover:border-accent transition-colors text-sm"
-        >
-          Download PDF
-        </a>
-      </div>
+      <TemplatePicker applicationId={application.id} />
 
       {/* The end of a finished application is the most likely place to start
           the next one — so say so, rather than relying on the browser's

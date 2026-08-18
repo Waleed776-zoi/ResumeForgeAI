@@ -10,7 +10,13 @@ import { GENERATION_STAGES, stageIndex, type StageId } from "@/lib/stages";
  * 20-second wait is the one moment the user is paying full attention to how
  * the thing works.
  */
-export function GenerationProgress({ current }: { current: StageId }) {
+export function GenerationProgress({
+  current,
+  model,
+}: {
+  current: StageId;
+  model?: string;
+}) {
   const currentIndex = stageIndex(current);
   const total = GENERATION_STAGES.length;
   // Count the in-flight step as half done, so the bar always moves on the
@@ -62,8 +68,15 @@ export function GenerationProgress({ current }: { current: StageId }) {
       </ol>
 
       <p className="px-6 pb-5 text-xs text-ink-soft/80">
-        This usually takes 15–25 seconds. Three model calls run in sequence —
-        leave this tab open.
+        This usually takes 15–25 seconds — leave this tab open.
+        {model && (
+          <>
+            {" "}
+            Currently answering: <span className="text-ink-soft">{model}</span>.
+            If a model is out of quota the app falls through to the next one
+            automatically.
+          </>
+        )}
       </p>
     </div>
   );

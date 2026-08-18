@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { generateJson, GeminiError } from "@/lib/gemini";
+import { generateJson, GeminiError } from "@/lib/llm";
 import { gapAnalysis } from "@/lib/gap-analysis";
 import { extractText } from "@/parsers/docx";
 import type { GenerationEvent, StageId } from "@/lib/stages";
@@ -118,6 +118,7 @@ export async function POST(req: NextRequest) {
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
             deadline,
+            onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Extract structured data from this resume. Return JSON matching: { "name": string, "contact": string, "summary": string, "skills": string[], "experience": [{"title": string, "company": string, "dates": string, "bullets": string[]}], "education": string[], "certifications": string[], "publications": string[] }
 
 For "publications": one entry per cited work, copied VERBATIM as a single string — keep the author list, title, venue/journal, date and DOI exactly as written. Do not renumber, reformat, abbreviate, or summarise them. A citation is a factual record and must survive unchanged. Include only formal citations here; profile links (ORCID, ResearchGate, Google Scholar) belong in "contact". Return an empty array if the resume lists none.
@@ -128,6 +129,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
             deadline,
+            onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Extract structured data from this job posting. Return JSON matching: { "role": string, "company": string, "seniority": string, "required_skills": string[], "responsibilities": string[] }\n\n<document>${jobPostingText}</document>`,
           }),
         ]);
@@ -145,6 +147,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
           model: "quality",
           systemPrompt: TAILOR_SYSTEM_PROMPT,
           deadline,
+          onModelUsed: (label) => send({ type: "model", label }),
           userContent: `Original resume:\n<resume_json>${JSON.stringify(
             resumeJson
           )}</resume_json>\n\nTarget job:\n<job_json>${JSON.stringify(
@@ -171,6 +174,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
             model: "fast",
             systemPrompt: INTEGRITY_SYSTEM_PROMPT,
             deadline,
+            onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Original:\n<original>${JSON.stringify(
               resumeJson
             )}</original>\n\nTailored:\n<tailored>${JSON.stringify(

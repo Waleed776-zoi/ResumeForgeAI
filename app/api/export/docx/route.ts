@@ -20,9 +20,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  // Unrecognised values fall back to the default rather than erroring — a
+  // stale bookmark shouldn't break a download.
   const buffer = await generateResumeDocx(
     application.tailored_resume_json,
-    resolveResumeMeta(application)
+    resolveResumeMeta(application),
+    req.nextUrl.searchParams.get("template") ?? undefined
   );
 
   // Node's Buffer isn't assignable to BodyInit under current TS lib types —

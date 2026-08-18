@@ -12,6 +12,7 @@ import { describe, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { generateResumePdf } from "../generators/exportPdf";
 import { generateResumeDocx } from "../generators/exportDocx";
+import { TEMPLATE_IDS } from "../generators/templates";
 
 const tailored = {
   summary:
@@ -85,11 +86,16 @@ const meta = {
 };
 
 describe.skipIf(process.env.RENDER_SAMPLES !== "1")("sample render", () => {
-  it("writes a PDF and a DOCX", async () => {
-    writeFileSync("sample-resume.pdf", await generateResumePdf(tailored, meta));
-    writeFileSync(
-      "sample-resume.docx",
-      await generateResumeDocx(tailored, meta)
-    );
+  it("writes a PDF and a DOCX for every template", async () => {
+    for (const id of TEMPLATE_IDS) {
+      writeFileSync(
+        `sample-resume-${id}.pdf`,
+        await generateResumePdf(tailored, meta, id)
+      );
+      writeFileSync(
+        `sample-resume-${id}.docx`,
+        await generateResumeDocx(tailored, meta, id)
+      );
+    }
   });
 });

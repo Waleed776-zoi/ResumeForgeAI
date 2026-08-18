@@ -12,6 +12,7 @@ export function UploadForm() {
   const [jobPostingText, setJobPostingText] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [stage, setStage] = useState<StageId>("extracting");
+  const [model, setModel] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   async function handleSubmit(e: FormEvent) {
@@ -20,6 +21,7 @@ export function UploadForm() {
 
     setStatus("submitting");
     setStage("extracting");
+    setModel("");
     setErrorMessage("");
 
     const formData = new FormData();
@@ -63,6 +65,8 @@ export function UploadForm() {
           if (event.type === "ping") {
             // Liveness only — proves the server is still working.
             continue;
+          } else if (event.type === "model") {
+            setModel(event.label);
           } else if (event.type === "stage") {
             setStage(event.stage);
           } else if (event.type === "error") {
@@ -89,7 +93,7 @@ export function UploadForm() {
   }
 
   if (status === "submitting") {
-    return <GenerationProgress current={stage} />;
+    return <GenerationProgress current={stage} model={model} />;
   }
 
   return (
