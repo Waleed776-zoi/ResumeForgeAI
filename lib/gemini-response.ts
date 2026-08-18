@@ -165,3 +165,30 @@ export function parseJsonResponse<T>(raw: string): T {
 export function backoffCeilingMs(attempt: number, base = 1000, cap = 12_000) {
   return Math.min(2 ** attempt * base, cap);
 }
+
+/**
+ * A rough floor for how long one model call takes. Used to decide whether
+ * there's enough time left to bother starting another attempt.
+ */
+export const MIN_CALL_MS = 4_000;
+
+/**
+ * True when `needMs` more work would run past the deadline.
+ *
+ * Retrying and timing out are both failures, but only one of them can
+ * explain itself. Serverless platforms cap function duration; when the cap
+ * hits, the process is killed mid-flight and any streaming response simply
+ * stops — the client sees a closed connection and no reason. Checking the
+ * budget *before* committing to another attempt buys back the chance to
+ * report what happened.
+ */
+export function outOfTime(deadline: number | undefined, needMs: number) {
+  return deadline !== undefined && Date.now() + needMs > deadline;
+}
+
+export function budgetExhaustedError(attempts: number): GeminiError {
+  return new GeminiError(
+    `Gemini was too slow to answer within the time this request is allowed. Tried ${attempts} time${attempts === 1 ? "" : "s"}. This usually means the model is under load — waiting a minute and retrying is the fix.`,
+    false
+  );
+}

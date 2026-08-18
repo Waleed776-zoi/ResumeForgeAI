@@ -11,10 +11,25 @@ import type {
   IntegrityCheckResult,
 } from "@/lib/types";
 
-// Three sequential model calls plus a file parse. Vercel's default function
-// timeout is far shorter than that — without this the deployed route dies
-// mid-tailoring while working fine locally.
+// Three model calls plus a file parse. Vercel's default function timeout is
+// far shorter than that — without this the deployed route dies mid-tailoring
+// while working fine locally. Note this is capped by your Vercel plan; a
+// value above the plan ceiling is silently clamped, not honoured.
 export const maxDuration = 60;
+
+/**
+ * Wall-clock budget for the model calls, held below `maxDuration` so the
+ * route can still write an error event and close the stream cleanly.
+ *
+ * This exists because retrying and timing out interact badly. Retry logic is
+ * what makes transient 503s survivable, but four retries with backoff can
+ * consume a whole function's lifetime on their own — and a killed function
+ * can't explain itself. The client just sees the connection close. Budgeting
+ * the time up front means we stop retrying while there's still room to say
+ * why.
+ */
+const MODEL_BUDGET_MS = 45_000;
+const HEARTBEAT_MS = 10_000;
 
 // Prompts are loaded as plain strings — see /prompts/*.md for the
 // full documented versions. Keeping the system-instruction text here
@@ -78,9 +93,15 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      const send = (event: GenerationEvent) =>
+      let closed = false;
+      const send = (event: GenerationEvent) => {
+        if (closed) return;
         controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
       const stage = (id: StageId) => send({ type: "stage", stage: id });
+
+      const deadline = Date.now() + MODEL_BUDGET_MS;
+      const heartbeat = setInterval(() => send({ type: "ping" }), HEARTBEAT_MS);
 
       try {
         // --- Step 0: extract raw text from the uploaded file ---
@@ -96,6 +117,7 @@ export async function POST(req: NextRequest) {
           generateJson<ResumeJson>({
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
+            deadline,
             userContent: `Extract structured data from this resume. Return JSON matching: { "name": string, "contact": string, "summary": string, "skills": string[], "experience": [{"title": string, "company": string, "dates": string, "bullets": string[]}], "education": string[], "certifications": string[], "publications": string[] }
 
 For "publications": one entry per cited work, copied VERBATIM as a single string — keep the author list, title, venue/journal, date and DOI exactly as written. Do not renumber, reformat, abbreviate, or summarise them. A citation is a factual record and must survive unchanged. Include only formal citations here; profile links (ORCID, ResearchGate, Google Scholar) belong in "contact". Return an empty array if the resume lists none.
@@ -105,6 +127,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
           generateJson<JobJson>({
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
+            deadline,
             userContent: `Extract structured data from this job posting. Return JSON matching: { "role": string, "company": string, "seniority": string, "required_skills": string[], "responsibilities": string[] }\n\n<document>${jobPostingText}</document>`,
           }),
         ]);
@@ -121,6 +144,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
         const tailored = await generateJson<TailoredOutput>({
           model: "quality",
           systemPrompt: TAILOR_SYSTEM_PROMPT,
+          deadline,
           userContent: `Original resume:\n<resume_json>${JSON.stringify(
             resumeJson
           )}</resume_json>\n\nTarget job:\n<job_json>${JSON.stringify(
@@ -131,16 +155,37 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
         });
 
         // --- Call 3: integrity check (Flash-Lite) ---
+        //
+        // Non-fatal on purpose. By this point the expensive work is done and
+        // the tailored resume exists; throwing it away because the *checker*
+        // was rate-limited would be the worst of both worlds — the user waits
+        // 40 seconds and gets nothing. Instead the failure is recorded and
+        // the application is saved UNVERIFIED, which the results page already
+        // renders as "Review needed before you submit this". Failing this way
+        // round is the safe direction: an unchecked resume is flagged, never
+        // silently stamped as verified.
         stage("verifying");
-        const integrity = await generateJson<IntegrityCheckResult>({
-          model: "fast",
-          systemPrompt: INTEGRITY_SYSTEM_PROMPT,
-          userContent: `Original:\n<original>${JSON.stringify(
-            resumeJson
-          )}</original>\n\nTailored:\n<tailored>${JSON.stringify(
-            tailored
-          )}</tailored>\n\nCheck for unsupported claims.`,
-        });
+        let integrity: IntegrityCheckResult;
+        try {
+          integrity = await generateJson<IntegrityCheckResult>({
+            model: "fast",
+            systemPrompt: INTEGRITY_SYSTEM_PROMPT,
+            deadline,
+            userContent: `Original:\n<original>${JSON.stringify(
+              resumeJson
+            )}</original>\n\nTailored:\n<tailored>${JSON.stringify(
+              tailored
+            )}</tailored>\n\nCheck for unsupported claims.`,
+          });
+        } catch (err: unknown) {
+          integrity = {
+            passed: false,
+            flagged_items: [
+              "The automated fact-check did not run, so nothing below has been verified against your original resume. Read it through yourself before sending it anywhere.",
+            ],
+            notes: `Integrity check failed: ${userFacingMessage(err)}`,
+          };
+        }
 
         // --- Deterministic step: explainability diff (NO AI) ---
         stage("saving");
@@ -213,6 +258,8 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
       } catch (err: unknown) {
         send({ type: "error", error: userFacingMessage(err) });
       } finally {
+        clearInterval(heartbeat);
+        closed = true;
         controller.close();
       }
     },

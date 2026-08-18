@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { GapAnalysisPanel } from "@/components/GapAnalysisPanel";
 import { IntegrityBadge } from "@/components/IntegrityBadge";
+import { AtsPanel } from "@/components/AtsPanel";
+import { atsReport } from "@/lib/ats";
 import { applicationTitle } from "@/lib/display";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -16,7 +18,7 @@ export default async function ResultsPage({
 
   const { data: application, error } = await supabase
     .from("applications")
-    .select("*")
+    .select("*, base_resumes(resume_json)")
     .eq("id", id)
     .single();
 
@@ -25,6 +27,19 @@ export default async function ResultsPage({
   }
 
   const tailored = application.tailored_resume_json;
+  const baseResume = application.base_resumes?.resume_json;
+
+  // Computed here rather than stored at generation time. Every input is
+  // already persisted, atsReport is pure, and recomputing means applications
+  // generated months ago are graded by today's rules instead of being frozen
+  // against an older, worse rubric. It also means no migration.
+  const ats = atsReport({
+    tailored,
+    job: application.job_json ?? {},
+    gap: application.gap_analysis,
+    contact: baseResume?.contact ?? "",
+    education: baseResume?.education ?? [],
+  });
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 space-y-10">
@@ -43,6 +58,8 @@ export default async function ResultsPage({
       </header>
 
       <GapAnalysisPanel result={application.gap_analysis} />
+
+      <AtsPanel report={ats} />
 
       <section className="border border-line rounded bg-white p-6">
         <h2 className="font-serif text-xl mb-4">Tailored resume</h2>

@@ -19,6 +19,9 @@ export type StageId = (typeof GENERATION_STAGES)[number]["id"];
 
 export type GenerationEvent =
   | { type: "stage"; stage: StageId }
+  // Keeps bytes moving during the long tailoring call so no proxy in the
+  // path mistakes a working request for an idle one.
+  | { type: "ping" }
   | { type: "done"; applicationId: string }
   | { type: "error"; error: string };
 

@@ -60,7 +60,10 @@ export function UploadForm() {
 
           const event = JSON.parse(line) as GenerationEvent;
 
-          if (event.type === "stage") {
+          if (event.type === "ping") {
+            // Liveness only — proves the server is still working.
+            continue;
+          } else if (event.type === "stage") {
             setStage(event.stage);
           } else if (event.type === "error") {
             throw new Error(event.error);
@@ -72,8 +75,11 @@ export function UploadForm() {
       }
 
       if (!navigated) {
+        // The stream ended without a result and without an error event,
+        // which means the server was cut off rather than failing — almost
+        // always the hosting platform's function time limit.
         throw new Error(
-          "The connection closed before your resume finished. Please try again."
+          "The server ran out of time before finishing. This usually means the AI models were slow to respond on this attempt rather than anything being wrong with your resume — trying again generally works."
         );
       }
     } catch (err) {

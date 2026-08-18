@@ -338,9 +338,48 @@ Suggested order, building on the 3-weekend plan from the roadmap:
 3. **Day 5:** Add 3-5 more entries to `SKILL_ALIASES` in `lib/gap-analysis.ts` based on real mismatches you noticed — and write a test for each one you add.
 4. **Day 6-7:** Deploy (Part 12), share the link with a friend, get feedback on the actual output quality — not just whether it runs.
 
+## ATS readiness (built — read this before trusting the number)
+
+`lib/ats.ts` grades the tailored resume out of 100. It is deterministic, like
+gap analysis — a pure function with unit tests, no model call, no cost.
+
+Be clear about what it is not. **No real applicant tracking system publishes a
+score to candidates.** Workday, Greenhouse, Lever and Taleo parse a document
+into fields and index its text so recruiters can search it; none of them
+return a grade. Any product showing you "your ATS score: 78" invented that
+number. So this doesn't predict a hidden score — it audits the things that
+verifiably affect parsing and keyword search, and shows the arithmetic:
+
+| Weight | Check |
+|---|---|
+| 30 | Coverage of the core skills the posting names |
+| 15 | Whether those skills also appear in a bullet, not just the skills list |
+| 10 | Job-title keyword alignment |
+| 10 | Email and phone detectable in the contact line |
+| 10 | Experience / Skills / Education all present |
+| 10 | Every role carries a title, employer and dates |
+| 10 | Share of bullets containing a real figure (40% earns full marks) |
+| 5 | Bullets opening with an action verb |
+
+Checks that can't be evaluated — a posting with no stated skills, say — are
+marked *not applicable* and removed from the denominator, so a thin job ad
+never costs the candidate points.
+
+Two deliberate decisions worth keeping:
+
+- **The quantified-results bar is 40%, not 100%.** Demanding a number in every
+  bullet pushes people into inventing them, which is the one thing this app
+  exists not to do.
+- **It's computed at render time, not stored.** Every input is already
+  persisted and the function is pure, so old applications get graded by
+  today's rules instead of being frozen against an older rubric — and there's
+  no migration to run when the rubric improves.
+
+To tune it, edit the weights and `ACTION_VERBS` in `lib/ats.ts` and run
+`npm run test`.
+
 ## What's deliberately NOT built yet (see roadmap for the reasoning)
 
-- ATS scoring
 - Browser extension / job-URL scraping
 - Multiple resume templates
 - Billing/Stripe

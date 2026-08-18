@@ -4,6 +4,9 @@ import {
   describeError,
   parseJsonResponse,
   backoffCeilingMs,
+  outOfTime,
+  budgetExhaustedError,
+  MIN_CALL_MS,
 } from "./gemini-response";
 
 export { GeminiError } from "./gemini-response";
@@ -45,6 +48,11 @@ interface GenerateJsonOptions {
   systemPrompt: string;
   userContent: string;
   maxRetries?: number;
+  /**
+   * Epoch-ms wall clock by which this call must be finished. Retries stop
+   * early rather than running past it — see `outOfTime`.
+   */
+  deadline?: number;
 }
 
 /**
@@ -61,6 +69,7 @@ export async function generateJson<T>({
   systemPrompt,
   userContent,
   maxRetries = 4,
+  deadline,
 }: GenerateJsonOptions): Promise<T> {
   const genModel = client.getGenerativeModel({
     model: MODELS[model],
@@ -73,6 +82,12 @@ export async function generateJson<T>({
   let lastError: GeminiError | undefined;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    // Don't begin an attempt there isn't time to finish — being killed
+    // mid-call loses the ability to report anything at all.
+    if (outOfTime(deadline, MIN_CALL_MS)) {
+      throw lastError ?? budgetExhaustedError(attempt);
+    }
+
     try {
       const result = await genModel.generateContent(userContent);
       return parseJsonResponse<T>(result.response.text());
@@ -85,9 +100,15 @@ export async function generateJson<T>({
       }
 
       const ceiling = backoffCeilingMs(attempt);
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.random() * ceiling)
-      );
+      const delay = Math.random() * ceiling;
+
+      // Sleeping and then discovering there's no time left wastes the very
+      // budget we're trying to protect.
+      if (outOfTime(deadline, delay + MIN_CALL_MS)) {
+        throw described;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 

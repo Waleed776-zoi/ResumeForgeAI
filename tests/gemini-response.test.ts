@@ -5,6 +5,9 @@ import {
   parseJsonResponse,
   statusFromError,
   backoffCeilingMs,
+  outOfTime,
+  budgetExhaustedError,
+  MIN_CALL_MS,
 } from "../lib/gemini-response";
 
 // The literal string the SDK produced in production, kept verbatim — the
@@ -88,6 +91,28 @@ describe("parseJsonResponse", () => {
       expect(err).toBeInstanceOf(GeminiError);
       expect((err as GeminiError).retryable).toBe(true);
     }
+  });
+});
+
+describe("outOfTime", () => {
+  it("is never true without a deadline", () => {
+    expect(outOfTime(undefined, 999_999)).toBe(false);
+  });
+
+  it("is true only when the work would run past the deadline", () => {
+    const in10s = Date.now() + 10_000;
+    expect(outOfTime(in10s, 4_000)).toBe(false);
+    expect(outOfTime(in10s, 30_000)).toBe(true);
+  });
+
+  it("stops a retry that couldn't finish, which is what a timeout can't do", () => {
+    // Regression: four retries with backoff can outlive the whole serverless
+    // function, and a killed function can't report anything — the client
+    // just sees the connection drop. The budget check has to fire first.
+    const almostUp = Date.now() + 500;
+    expect(outOfTime(almostUp, MIN_CALL_MS)).toBe(true);
+    expect(budgetExhaustedError(3).retryable).toBe(false);
+    expect(budgetExhaustedError(3).message).toContain("Tried 3 times");
   });
 });
 
