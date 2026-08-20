@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, AlertTriangle, ArrowRight, Minus } from "lucide-react";
+import { useRevealOnScroll } from "@/lib/use-reveal";
 import type { ChangeLedger, LedgerEntry, ChangeKind } from "@/lib/change-ledger";
 
 const KIND_LABEL: Record<ChangeKind, string> = {
@@ -14,8 +15,21 @@ const KIND_LABEL: Record<ChangeKind, string> = {
 /**
  * Marks the words lifted from the job posting, so "borrowed language" is
  * something the reader can see rather than something the app asserts.
+ *
+ * The underlines draw one at a time rather than arriving together: a row is
+ * meant to be audited term by term, and the stagger is what makes the eye
+ * stop on each one instead of reading past a block of green. `at` is the
+ * row's own delay, so each row runs its own short sequence.
  */
-function Highlighted({ text, terms }: { text: string; terms: string[] }) {
+function Highlighted({
+  text,
+  terms,
+  at,
+}: {
+  text: string;
+  terms: string[];
+  at: number;
+}) {
   if (terms.length === 0) return <>{text}</>;
 
   const escaped = terms
@@ -23,29 +37,43 @@ function Highlighted({ text, terms }: { text: string; terms: string[] }) {
     .sort((a, b) => b.length - a.length);
   const pattern = new RegExp(`\\b(${escaped.join("|")})\\b`, "gi");
 
+  let marked = 0;
+
   return (
     <>
-      {text.split(pattern).map((part, i) =>
-        terms.some((t) => t.toLowerCase() === part.toLowerCase()) ? (
-          <mark key={i} className="bg-transparent text-accent">
+      {text.split(pattern).map((part, i) => {
+        if (!terms.some((t) => t.toLowerCase() === part.toLowerCase())) {
+          return <span key={i}>{part}</span>;
+        }
+        const delay = at + 260 + marked * 150;
+        marked += 1;
+        return (
+          <mark key={i} className="relative bg-transparent text-accent">
             {part}
+            <span
+              aria-hidden
+              className="absolute -bottom-0.5 left-0 h-px w-full origin-left animate-draw-underline bg-current opacity-60"
+              style={{ animationDelay: `${delay}ms` }}
+            />
           </mark>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
+        );
+      })}
     </>
   );
 }
 
 function Row({ entry, index }: { entry: LedgerEntry; index: number }) {
   const review = entry.verdict === "review";
+  // Capped so a forty-change ledger does not leave the last rows waiting two
+  // seconds for a stagger nobody is still watching.
+  const at = Math.min(index, 8) * 55;
 
   return (
     <li
-      className={`relative rounded-lg border p-5 transition-colors ${
+      className={`relative animate-lift-in rounded-lg border p-5 transition-colors ${
         review ? "border-flag/40 bg-flag/[0.04]" : "border-line bg-surface/40"
       }`}
+      style={{ animationDelay: `${at}ms` }}
     >
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
         <span className="font-mono text-[11px] tabular-nums text-ink-soft">
@@ -84,7 +112,7 @@ function Row({ entry, index }: { entry: LedgerEntry; index: number }) {
           <div>
             <p className="eyebrow mb-1.5 text-ink-soft">Tailored</p>
             <p className="text-ink">
-              <Highlighted text={entry.tailored} terms={entry.borrowed} />
+              <Highlighted text={entry.tailored} terms={entry.borrowed} at={at} />
             </p>
           </div>
         )}
@@ -114,6 +142,9 @@ function Row({ entry, index }: { entry: LedgerEntry; index: number }) {
 
 export function ChangeLedgerPanel({ ledger }: { ledger: ChangeLedger }) {
   const [showUnchanged, setShowUnchanged] = useState(false);
+  // The ledger sits well below the fold, so the rows wait for the reader
+  // instead of having played out unseen before they get here.
+  const listRef = useRevealOnScroll<HTMLOListElement>({ threshold: 0.05 });
 
   const { stats } = ledger;
   // Anything needing review comes first — the point of the ledger is to find
@@ -186,7 +217,7 @@ export function ChangeLedgerPanel({ ledger }: { ledger: ChangeLedger }) {
           word for word.
         </p>
       ) : (
-        <ol className="space-y-3">
+        <ol ref={listRef} className="space-y-3">
           {visible.map((entry, i) => (
             <Row key={entry.id} entry={entry} index={i} />
           ))}
