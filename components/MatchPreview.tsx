@@ -73,7 +73,7 @@ export function MatchPreview() {
   return (
     <div
       ref={ref}
-      className="panel mx-auto max-w-md overflow-hidden p-6 text-left sm:p-7"
+      className="panel mx-auto w-full max-w-md overflow-hidden p-6 text-left sm:p-7 lg:mx-0 lg:ml-auto"
     >
       <p className="eyebrow mb-2.5 text-ink-soft">Your resume</p>
       <p
