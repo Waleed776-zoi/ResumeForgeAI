@@ -4,6 +4,8 @@ import { IntegrityBadge } from "@/components/IntegrityBadge";
 import { AtsPanel } from "@/components/AtsPanel";
 import { TemplatePicker } from "@/components/TemplatePicker";
 import { atsReport } from "@/lib/ats";
+import { ChangeLedgerPanel } from "@/components/ChangeLedgerPanel";
+import { buildChangeLedger } from "@/lib/change-ledger";
 import { applicationTitle } from "@/lib/display";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -30,10 +32,18 @@ export default async function ResultsPage({
   const tailored = application.tailored_resume_json;
   const baseResume = application.base_resumes?.resume_json;
 
-  // Computed here rather than stored at generation time. Every input is
-  // already persisted, atsReport is pure, and recomputing means applications
-  // generated months ago are graded by today's rules instead of being frozen
-  // against an older, worse rubric. It also means no migration.
+  // Both of these are computed on view rather than stored at generation
+  // time. Every input is already persisted and both functions are pure, so
+  // applications generated months ago get today's rules instead of being
+  // frozen against an older, worse rubric — and there is no migration.
+  const ledger = baseResume
+    ? buildChangeLedger({
+        original: baseResume,
+        tailored,
+        job: application.job_json ?? undefined,
+      })
+    : null;
+
   const ats = atsReport({
     tailored,
     job: application.job_json ?? {},
@@ -59,6 +69,10 @@ export default async function ResultsPage({
       </header>
 
       <GapAnalysisPanel result={application.gap_analysis} />
+
+      {/* The ledger sits directly under the integrity badge: the badge is the
+          model's verdict, this is the evidence behind it. */}
+      {ledger && <ChangeLedgerPanel ledger={ledger} />}
 
       <AtsPanel report={ats} />
 
