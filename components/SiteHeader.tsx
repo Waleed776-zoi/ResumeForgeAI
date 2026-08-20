@@ -18,7 +18,7 @@ export async function SiteHeader() {
 
   return (
     <header className="border-b border-line/70 bg-paper/70 backdrop-blur-md sticky top-0 z-20">
-      <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
         <Link
           href="/"
           className="inline-flex items-center gap-2.5 text-accent hover:opacity-75 transition-opacity"
