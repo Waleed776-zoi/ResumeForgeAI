@@ -19,11 +19,17 @@ import { useEffect, useRef } from "react";
  * Anyone who asked for reduced motion is skipped entirely: no hold, no
  * observer, and the global media query collapses the animations to their end
  * state immediately.
+ *
+ * `replayKey` re-arms the whole thing. Bumping it after a replay puts the
+ * hold back and starts watching again, so a sequence triggered from the top
+ * of the page waits out the smooth scroll instead of playing to an empty
+ * viewport and being finished by the time the reader lands on it.
  */
 export function useRevealOnScroll<T extends HTMLElement>({
   threshold = 0.3,
   rootMargin = "0px 0px -12% 0px",
-}: { threshold?: number; rootMargin?: string } = {}) {
+  replayKey = 0,
+}: { threshold?: number; rootMargin?: string; replayKey?: number } = {}) {
   const ref = useRef<T>(null);
 
   useEffect(() => {
@@ -37,8 +43,9 @@ export function useRevealOnScroll<T extends HTMLElement>({
       return;
     }
 
-    // Already on screen at mount (the hero, usually): let it play rather
-    // than waiting for a scroll that may never come.
+    // Already on screen (the hero at mount, or a replay of a section the
+    // reader is currently looking at): let it play rather than waiting for a
+    // scroll that will never come.
     const box = el.getBoundingClientRect();
     if (box.top < window.innerHeight * 0.85 && box.bottom > 0) return;
 
@@ -60,7 +67,7 @@ export function useRevealOnScroll<T extends HTMLElement>({
       observer.disconnect();
       el.classList.remove("motion-hold");
     };
-  }, [threshold, rootMargin]);
+  }, [threshold, rootMargin, replayKey]);
 
   return ref;
 }
