@@ -434,6 +434,34 @@ each is a small addition to `lib/providers.ts`: **Cerebras** (very fast),
 **Mistral La Plateforme**, and **OpenRouter** (whose `:free` model IDs pool
 several vendors behind one key).
 
+## Change ledger
+
+`lib/change-ledger.ts` diffs the original resume against the tailored one and
+lists every edit with its provenance. Deterministic, like gap analysis and the
+ATS score — and for the sharpest reason of the three: **asking a model to
+explain what it changed produces a second claim, not evidence.** A model that
+invented a metric will happily narrate a reason it belonged. A diff can be
+checked against both documents by hand.
+
+Verdicts mean something specific:
+
+- **Supported** — every figure in the tailored text also appears in the
+  original, and every named skill in it appears somewhere in the resume.
+- **Needs review** — it contains a figure or named skill that appears nowhere
+  in the original. That is the shape a fabrication takes.
+
+It also asserts that dates, job titles and employers are unchanged, and says
+so loudly when they are not.
+
+Known limit, stated because a vague badge is worse than none: it verifies
+facts and named skills, **not turns of phrase**. "Led a team" where the
+original said "worked with a team" is a claim shift no token comparison
+catches — which is why the model-run integrity check still runs alongside it.
+When the two disagree, the ledger is the one you can audit.
+
+Computed on view, like the ATS report, so old applications get today's rules
+and there is no migration.
+
 ## Resume templates
 
 Three, picked on the results page: **Classic** (centred serif, ruled sections

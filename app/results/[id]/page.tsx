@@ -4,6 +4,8 @@ import { IntegrityBadge } from "@/components/IntegrityBadge";
 import { AtsPanel } from "@/components/AtsPanel";
 import { TemplatePicker } from "@/components/TemplatePicker";
 import { atsReport } from "@/lib/ats";
+import { ChangeLedgerPanel } from "@/components/ChangeLedgerPanel";
+import { buildChangeLedger } from "@/lib/change-ledger";
 import { applicationTitle } from "@/lib/display";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -30,10 +32,18 @@ export default async function ResultsPage({
   const tailored = application.tailored_resume_json;
   const baseResume = application.base_resumes?.resume_json;
 
-  // Computed here rather than stored at generation time. Every input is
-  // already persisted, atsReport is pure, and recomputing means applications
-  // generated months ago are graded by today's rules instead of being frozen
-  // against an older, worse rubric. It also means no migration.
+  // Both of these are computed on view rather than stored at generation
+  // time. Every input is already persisted and both functions are pure, so
+  // applications generated months ago get today's rules instead of being
+  // frozen against an older, worse rubric — and there is no migration.
+  const ledger = baseResume
+    ? buildChangeLedger({
+        original: baseResume,
+        tailored,
+        job: application.job_json ?? undefined,
+      })
+    : null;
+
   const ats = atsReport({
     tailored,
     job: application.job_json ?? {},
@@ -45,10 +55,10 @@ export default async function ResultsPage({
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 space-y-10">
       <header>
-        <p className="text-accent text-xs font-medium tracking-widest uppercase mb-2">
+        <p className="eyebrow text-accent mb-3">
           {applicationTitle(application)}
         </p>
-        <h1 className="font-serif text-3xl mb-4">Your tailored application</h1>
+        <h1 className="font-display text-[2.4rem] leading-[1.1] tracking-display mb-5">Your tailored application</h1>
         {/* These are the fact-checker's own findings, not the keyword diff
             in `explainability` — a badge that says "verified" has to show
             what the verification actually objected to. */}
@@ -60,10 +70,14 @@ export default async function ResultsPage({
 
       <GapAnalysisPanel result={application.gap_analysis} />
 
+      {/* The ledger sits directly under the integrity badge: the badge is the
+          model's verdict, this is the evidence behind it. */}
+      {ledger && <ChangeLedgerPanel ledger={ledger} />}
+
       <AtsPanel report={ats} />
 
-      <section className="border border-line rounded bg-white p-6">
-        <h2 className="font-serif text-xl mb-4">Tailored resume</h2>
+      <section className="panel p-7">
+        <h2 className="font-display text-[22px] mb-5">Tailored resume</h2>
         <p className="text-ink-soft text-sm mb-6">{tailored.summary}</p>
 
         <h3 className="text-sm font-medium text-ink-soft uppercase tracking-wide mb-2">
@@ -96,8 +110,8 @@ export default async function ResultsPage({
         </div>
       </section>
 
-      <section className="border border-line rounded bg-white p-6">
-        <h2 className="font-serif text-xl mb-4">Cover letter</h2>
+      <section className="panel p-7">
+        <h2 className="font-display text-[22px] mb-5">Cover letter</h2>
         <p className="text-sm whitespace-pre-line leading-relaxed">
           {application.cover_letter}
         </p>

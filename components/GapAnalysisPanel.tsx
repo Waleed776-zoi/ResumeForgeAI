@@ -18,7 +18,7 @@ function Chip({
   const toneClass = {
     matched: "bg-accent-soft text-accent",
     missing: "bg-flag/10 text-flag",
-    neutral: "bg-line/40 text-ink-soft",
+    neutral: "bg-raised text-ink-soft",
   }[tone];
 
   return (
@@ -79,10 +79,10 @@ export function GapAnalysisPanel({ result }: { result: GapAnalysisResult }) {
   const hiddenExtraCount = result.extra.length - visibleExtra.length;
 
   return (
-    <div className="border border-line rounded bg-white p-6">
+    <div className="panel p-7">
       <div className="flex items-baseline justify-between gap-4 mb-1">
-        <h3 className="font-serif text-lg">Skill match</h3>
-        <span className="text-2xl font-serif text-accent">
+        <h3 className="font-display text-[22px]">Skill match</h3>
+        <span className="text-2xl font-mono tabular-nums text-accent">
           {postingListedNoSkills || scoredCount === 0 ? "—" : `${percent}%`}
         </span>
       </div>

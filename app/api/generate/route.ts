@@ -4,6 +4,7 @@ import { generateJson, GeminiError } from "@/lib/llm";
 import { gapAnalysis } from "@/lib/gap-analysis";
 import { extractText } from "@/parsers/docx";
 import type { GenerationEvent, StageId } from "@/lib/stages";
+import { stageDeadline } from "@/lib/budget";
 import type {
   ResumeJson,
   JobJson,
@@ -18,8 +19,12 @@ import type {
 export const maxDuration = 60;
 
 /**
- * Wall-clock budget for the model calls, held below `maxDuration` so the
- * route can still write an error event and close the stream cleanly.
+ * Overall wall-clock budget for the model calls, held below `maxDuration` so
+ * the route can still write an error event and close the stream cleanly.
+ *
+ * This is the OUTER bound only. Each stage draws its own deadline from it via
+ * lib/budget.ts — a single shared deadline let early stages starve the
+ * integrity check, which is the one step that must never be skipped.
  *
  * This exists because retrying and timing out interact badly. Retry logic is
  * what makes transient 503s survivable, but four retries with backoff can
@@ -28,7 +33,7 @@ export const maxDuration = 60;
  * the time up front means we stop retrying while there's still room to say
  * why.
  */
-const MODEL_BUDGET_MS = 45_000;
+const MODEL_BUDGET_MS = 46_000;
 const HEARTBEAT_MS = 10_000;
 
 // Prompts are loaded as plain strings — see /prompts/*.md for the
@@ -100,7 +105,7 @@ export async function POST(req: NextRequest) {
       };
       const stage = (id: StageId) => send({ type: "stage", stage: id });
 
-      const deadline = Date.now() + MODEL_BUDGET_MS;
+      const overallDeadline = Date.now() + MODEL_BUDGET_MS;
       const heartbeat = setInterval(() => send({ type: "ping" }), HEARTBEAT_MS);
 
       try {
@@ -113,11 +118,12 @@ export async function POST(req: NextRequest) {
         // call below is what actually needs both results. Two round trips of
         // roughly equal length collapse into one.
         stage("parsing");
+        const parseDeadline = stageDeadline(overallDeadline, "parsing");
         const [resumeJson, jobJson] = await Promise.all([
           generateJson<ResumeJson>({
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
-            deadline,
+            deadline: parseDeadline,
             onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Extract structured data from this resume. Return JSON matching: { "name": string, "contact": string, "summary": string, "skills": string[], "experience": [{"title": string, "company": string, "dates": string, "bullets": string[]}], "education": string[], "certifications": string[], "publications": string[] }
 
@@ -128,7 +134,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
           generateJson<JobJson>({
             model: "fast",
             systemPrompt: PARSE_SYSTEM_PROMPT,
-            deadline,
+            deadline: parseDeadline,
             onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Extract structured data from this job posting. Return JSON matching: { "role": string, "company": string, "seniority": string, "required_skills": string[], "responsibilities": string[] }\n\n<document>${jobPostingText}</document>`,
           }),
@@ -146,7 +152,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
         const tailored = await generateJson<TailoredOutput>({
           model: "quality",
           systemPrompt: TAILOR_SYSTEM_PROMPT,
-          deadline,
+          deadline: stageDeadline(overallDeadline, "tailoring"),
           onModelUsed: (label) => send({ type: "model", label }),
           userContent: `Original resume:\n<resume_json>${JSON.stringify(
             resumeJson
@@ -173,7 +179,7 @@ For "publications": one entry per cited work, copied VERBATIM as a single string
           integrity = await generateJson<IntegrityCheckResult>({
             model: "fast",
             systemPrompt: INTEGRITY_SYSTEM_PROMPT,
-            deadline,
+            deadline: stageDeadline(overallDeadline, "verifying"),
             onModelUsed: (label) => send({ type: "model", label }),
             userContent: `Original:\n<original>${JSON.stringify(
               resumeJson

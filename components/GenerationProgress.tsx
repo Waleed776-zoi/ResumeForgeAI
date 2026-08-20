@@ -25,11 +25,11 @@ export function GenerationProgress({
 
   return (
     <div
-      className="border border-line rounded bg-white overflow-hidden"
+      className="panel overflow-hidden"
       role="status"
       aria-live="polite"
     >
-      <div className="h-1 bg-line/50">
+      <div className="h-1 bg-line">
         <div
           className="h-full bg-accent transition-all duration-700 ease-out"
           style={{ width: `${Math.round(fraction * 100)}%` }}

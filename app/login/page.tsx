@@ -56,7 +56,7 @@ function LoginForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className="w-full border border-line rounded px-4 py-3 text-sm bg-white focus:border-accent outline-none"
+        className="w-full border border-line rounded px-4 py-3 text-sm bg-surface focus:border-accent outline-none"
       />
       {error && (
         <div className="border border-flag/40 bg-flag/5 rounded px-4 py-3 flex gap-3">
@@ -66,7 +66,7 @@ function LoginForm() {
       )}
       <button
         type="submit"
-        className="w-full bg-accent text-white px-6 py-3 rounded font-medium hover:bg-accent/90 transition-colors"
+        className="w-full bg-accent text-paper px-6 py-3 rounded font-medium hover:bg-accent-bright transition-colors"
       >
         Send magic link
       </button>
@@ -77,7 +77,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main className="max-w-sm mx-auto px-6 py-24">
-      <h1 className="font-serif text-2xl mb-6">Sign in</h1>
+      <h1 className="font-display text-[2rem] tracking-display mb-7">Sign in</h1>
       {/* useSearchParams needs a Suspense boundary or the build fails. */}
       <Suspense fallback={null}>
         <LoginForm />
