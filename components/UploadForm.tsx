@@ -2,7 +2,9 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Upload, AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { FileUpload } from "@/components/ui/file-upload";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { GenerationProgress } from "@/components/GenerationProgress";
 import type { GenerationEvent, StageId } from "@/lib/stages";
 
@@ -17,6 +19,8 @@ export function UploadForm() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    // FileUpload manages its own input, so the native `required` guard is
+    // gone; this check is now the only thing preventing an empty submit.
     if (!resumeFile || !jobPostingText.trim()) return;
 
     setStatus("submitting");
@@ -98,34 +102,10 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      <div>
-        <label className="block text-sm font-medium text-ink mb-2">
-          Your resume
-        </label>
-        <label
-          htmlFor="resume-upload"
-          className="flex items-center gap-3 border border-line rounded px-4 py-3 cursor-pointer hover:border-accent transition-colors bg-white"
-        >
-          <Upload size={18} className="text-accent" />
-          <span className="text-sm text-ink-soft">
-            {resumeFile ? resumeFile.name : "Choose a PDF or DOCX file"}
-          </span>
-        </label>
-        <input
-          id="resume-upload"
-          type="file"
-          accept=".pdf,.docx"
-          className="hidden"
-          onChange={(e) => setResumeFile(e.target.files?.[0] ?? null)}
-          required
-        />
-      </div>
+      <FileUpload onChange={(files) => setResumeFile(files[0] ?? null)} />
 
       <div>
-        <label
-          htmlFor="job-posting"
-          className="block text-sm font-medium text-ink mb-2"
-        >
+        <label htmlFor="job-posting" className="eyebrow text-ink-soft mb-2.5 block">
           Job posting
         </label>
         <textarea
@@ -134,7 +114,7 @@ export function UploadForm() {
           value={jobPostingText}
           onChange={(e) => setJobPostingText(e.target.value)}
           placeholder="Paste the full job description here..."
-          className="w-full border border-line rounded px-4 py-3 text-sm bg-white focus:border-accent outline-none"
+          className="w-full border border-line rounded-lg px-4 py-3.5 text-sm bg-surface/70 leading-relaxed placeholder:text-ink-soft/60 focus:border-accent/60 outline-none transition-colors resize-y"
           required
         />
       </div>
@@ -152,12 +132,15 @@ export function UploadForm() {
         </div>
       )}
 
-      <button
+      <HoverBorderGradient
+        as="button"
         type="submit"
-        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-accent text-white px-6 py-3 rounded font-medium hover:bg-accent/90 disabled:opacity-60 transition-colors"
+        duration={2.8}
+        containerClassName="rounded-full"
+        className="px-7 py-3"
       >
         {status === "error" ? "Try again" : "Tailor my resume"}
-      </button>
+      </HoverBorderGradient>
     </form>
   );
 }

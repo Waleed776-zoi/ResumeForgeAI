@@ -18,12 +18,15 @@ import { PROVIDERS, type ProviderId } from "./providers";
  * per model, so when `gemini-3.5-flash` returns "limit: 20", the floating
  * `gemini-flash-latest` alias is still answering normally.
  *
- * To see what a key can actually call:
- *   curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY"
- *   curl -s https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
+ * A model id that doesn't exist fails silently as a fallback: the chain just
+ * walks past it, so a provider can appear "configured" while contributing
+ * nothing. That has now happened twice — Gemini retired the 2.5 line, and
+ * Groq replaced its Llama ids — so verifying ids is a command, not a habit:
  *
- * Being listed is not proof of being callable — retired models still appear.
- * Send one real request before promoting anything up a chain.
+ *   npm run check:models
+ *
+ * Being listed is not proof of being callable — retired models still appear
+ * in listings. The script sends a real request to each id in these chains.
  */
 
 export type ModelTier = "fast" | "quality";
@@ -36,20 +39,28 @@ export interface ModelCandidate {
 }
 
 export const MODEL_CHAINS: Record<ModelTier, ModelCandidate[]> = {
-  // Parsing and fact-checking: cheap, high-volume, quality-insensitive.
+  // Parsing and fact-checking: high-volume, quality-insensitive, and run
+  // three times per generation.
+  //
+  // Groq leads here for two reasons. It measured ~0.7s against Gemini's
+  // 1.4–4.7s on a realistic resume, and — more importantly — Gemini's free
+  // tier is the SCARCE resource (20 requests on the quality model). Spending
+  // the abundant provider on the cheap steps keeps the scarce one available
+  // for the step where quality actually shows.
   fast: [
+    { provider: "groq", model: "openai/gpt-oss-20b", label: "GPT-OSS 20B (Groq)" },
     { provider: "gemini", model: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
-    { provider: "groq", model: "llama-3.1-8b-instant", label: "Llama 3.1 8B (Groq)" },
+    { provider: "groq", model: "openai/gpt-oss-120b", label: "GPT-OSS 120B (Groq)" },
     { provider: "gemini", model: "gemini-flash-lite-latest", label: "Gemini Flash Lite" },
-    { provider: "groq", model: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)" },
   ],
 
-  // Tailoring and cover letter: the one step where output quality is the
-  // product, so the fallbacks are the strongest models available free.
+  // Tailoring and cover letter: the one step where output quality IS the
+  // product. Gemini leads because the prompt is tuned against it; the
+  // fallbacks are the strongest free models available.
   quality: [
     { provider: "gemini", model: "gemini-3.5-flash", label: "Gemini 3.5 Flash" },
     { provider: "gemini", model: "gemini-flash-latest", label: "Gemini Flash" },
-    { provider: "groq", model: "llama-3.3-70b-versatile", label: "Llama 3.3 70B (Groq)" },
+    { provider: "groq", model: "openai/gpt-oss-120b", label: "GPT-OSS 120B (Groq)" },
     { provider: "gemini", model: "gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite" },
   ],
 };

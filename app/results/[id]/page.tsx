@@ -45,10 +45,10 @@ export default async function ResultsPage({
   return (
     <main className="max-w-3xl mx-auto px-6 py-16 space-y-10">
       <header>
-        <p className="text-accent text-xs font-medium tracking-widest uppercase mb-2">
+        <p className="eyebrow text-accent mb-3">
           {applicationTitle(application)}
         </p>
-        <h1 className="font-serif text-3xl mb-4">Your tailored application</h1>
+        <h1 className="font-display text-[2.4rem] leading-[1.1] tracking-display mb-5">Your tailored application</h1>
         {/* These are the fact-checker's own findings, not the keyword diff
             in `explainability` — a badge that says "verified" has to show
             what the verification actually objected to. */}
@@ -62,8 +62,8 @@ export default async function ResultsPage({
 
       <AtsPanel report={ats} />
 
-      <section className="border border-line rounded bg-white p-6">
-        <h2 className="font-serif text-xl mb-4">Tailored resume</h2>
+      <section className="panel p-7">
+        <h2 className="font-display text-[22px] mb-5">Tailored resume</h2>
         <p className="text-ink-soft text-sm mb-6">{tailored.summary}</p>
 
         <h3 className="text-sm font-medium text-ink-soft uppercase tracking-wide mb-2">
@@ -96,8 +96,8 @@ export default async function ResultsPage({
         </div>
       </section>
 
-      <section className="border border-line rounded bg-white p-6">
-        <h2 className="font-serif text-xl mb-4">Cover letter</h2>
+      <section className="panel p-7">
+        <h2 className="font-display text-[22px] mb-5">Cover letter</h2>
         <p className="text-sm whitespace-pre-line leading-relaxed">
           {application.cover_letter}
         </p>

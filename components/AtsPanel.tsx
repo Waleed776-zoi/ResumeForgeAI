@@ -42,7 +42,7 @@ function CheckRow({ check }: { check: AtsCheck }) {
             {check.items.map((item) => (
               <span
                 key={item}
-                className="bg-line/40 text-ink-soft text-xs px-2 py-0.5 rounded-sm"
+                className="bg-raised text-ink-soft text-xs px-2 py-0.5 rounded-sm"
               >
                 {item}
               </span>
@@ -65,18 +65,18 @@ export function AtsPanel({ report }: { report: AtsReport }) {
   const categories: CheckCategory[] = ["keywords", "structure", "impact"];
 
   return (
-    <div className="border border-line rounded bg-white p-6">
+    <div className="panel p-7">
       <div className="flex items-baseline justify-between gap-4">
-        <h3 className="font-serif text-lg">ATS readiness</h3>
+        <h3 className="font-display text-[22px]">ATS readiness</h3>
         <div className="text-right">
-          <span className={`text-2xl font-serif ${bandClass}`}>
+          <span className={`text-2xl font-mono tabular-nums ${bandClass}`}>
             {report.score}
           </span>
           <span className="text-ink-soft text-sm">/100</span>
         </div>
       </div>
 
-      <div className="h-1 bg-line/50 rounded-sm overflow-hidden mt-3 mb-3">
+      <div className="h-1 bg-line rounded-sm overflow-hidden mt-3 mb-3">
         <div
           className={`h-full ${report.band === "needs work" ? "bg-flag" : "bg-accent"}`}
           style={{ width: `${report.score}%` }}

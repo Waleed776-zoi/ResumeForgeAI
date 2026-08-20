@@ -17,16 +17,16 @@ export async function SiteHeader() {
   } = await supabase.auth.getUser();
 
   return (
-    <header className="border-b border-line bg-paper/80 backdrop-blur-sm sticky top-0 z-10">
-      <div className="max-w-3xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+    <header className="border-b border-line/70 bg-paper/70 backdrop-blur-md sticky top-0 z-20">
+      <div className="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-accent hover:opacity-80 transition-opacity"
+          className="inline-flex items-center gap-2.5 text-accent hover:opacity-75 transition-opacity"
           aria-label="ResumeForge — back to home"
         >
           <ShieldCheck size={16} />
-          <span className="font-serif text-base tracking-tight">
-            ResumeForge
+          <span className="font-display text-[19px] tracking-display text-ink">
+            Resume<span className="text-accent">Forge</span>
           </span>
         </Link>
 
@@ -39,7 +39,7 @@ export async function SiteHeader() {
               >
                 History
               </Link>
-              <span className="text-ink-soft/70 hidden sm:inline">
+              <span className="text-ink-soft hidden sm:inline font-mono text-xs">
                 {user.email}
               </span>
               <form action="/auth/signout" method="post" className="flex">

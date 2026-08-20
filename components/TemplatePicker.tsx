@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
+import { HoverHighlight } from "@/components/ui/hover-highlight";
 import {
   TEMPLATE_LIST,
   DEFAULT_TEMPLATE,
@@ -19,8 +20,11 @@ const STORAGE_KEY = "resumeforge:template";
  * headings are marked, how dense the text runs. Purely decorative.
  */
 function Thumb({ id, active }: { id: TemplateId; active: boolean }) {
-  const bar = active ? "bg-accent/60" : "bg-ink-soft/30";
-  const rule = active ? "bg-accent/40" : "bg-ink-soft/20";
+  // Marks are graphite on paper, not ink-soft on surface: the thumbnail
+  // depicts the printed document, so it keeps the document's colours even
+  // though the UI around it is dark.
+  const bar = active ? "bg-accent" : "bg-paper/75";
+  const rule = active ? "bg-accent/50" : "bg-paper/25";
 
   const lines = (count: number, gap: string) => (
     <div className={`flex flex-col ${gap}`}>
@@ -37,7 +41,7 @@ function Thumb({ id, active }: { id: TemplateId; active: boolean }) {
   return (
     <div
       aria-hidden
-      className="w-full aspect-[8.5/11] bg-white border border-line rounded-sm p-2.5 overflow-hidden"
+      className="w-full aspect-[8.5/11] bg-document rounded-sm p-2.5 overflow-hidden shadow-sm"
     >
       {id === "classic" && (
         <div className="space-y-2">
@@ -111,15 +115,17 @@ export function TemplatePicker({ applicationId }: { applicationId: string }) {
     `/api/export/${format}?id=${applicationId}&template=${selected}`;
 
   return (
-    <section className="border border-line rounded bg-white p-6">
-      <h2 className="font-serif text-xl mb-1">Choose a template</h2>
+    <section className="panel p-7">
+      <h2 className="font-display text-[22px] mb-1.5">Choose a template</h2>
       <p className="text-ink-soft text-sm mb-5">
         Same words, different typesetting. Every template is single-column
         with no tables or images, so all three stay readable to the software
         that parses your resume.
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* The highlight travels between cards; selection stays a border and a
+          check, so the choice is never communicated by hover alone. */}
+      <HoverHighlight className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {TEMPLATE_LIST.map((template) => {
           const active = template.id === selected;
 
@@ -127,12 +133,13 @@ export function TemplatePicker({ applicationId }: { applicationId: string }) {
             <button
               key={template.id}
               type="button"
+              data-highlight-item
               onClick={() => choose(template.id)}
               aria-pressed={active}
-              className={`text-left rounded p-3 border transition-colors ${
+              className={`relative z-10 text-left rounded-lg p-3 border transition-colors duration-300 ${
                 active
-                  ? "border-accent bg-accent-soft/40"
-                  : "border-line hover:border-accent/50"
+                  ? "border-accent/70 bg-accent-soft/40"
+                  : "border-line hover:border-accent/40"
               }`}
             >
               <Thumb id={template.id} active={active} />
@@ -147,12 +154,12 @@ export function TemplatePicker({ applicationId }: { applicationId: string }) {
             </button>
           );
         })}
-      </div>
+      </HoverHighlight>
 
       <div className="flex flex-wrap gap-3 mt-6">
         <a
           href={href("docx")}
-          className="bg-accent text-white px-6 py-3 rounded font-medium hover:bg-accent/90 transition-colors text-sm"
+          className="bg-accent text-paper px-6 py-3 rounded font-medium hover:bg-accent-bright transition-colors text-sm"
         >
           Download DOCX
         </a>

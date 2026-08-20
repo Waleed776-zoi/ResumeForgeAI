@@ -17,7 +17,7 @@ export default async function HistoryPage() {
 
   return (
     <main className="max-w-2xl mx-auto px-6 py-16">
-      <h1 className="font-serif text-3xl mb-8">Your applications</h1>
+      <h1 className="font-display text-[2.4rem] tracking-display mb-9">Your applications</h1>
 
       {!applications?.length && (
         <p className="text-ink-soft text-sm">
@@ -34,16 +34,16 @@ export default async function HistoryPage() {
           <Link
             key={app.id}
             href={`/results/${app.id}`}
-            className="flex items-center justify-between border border-line rounded bg-white px-5 py-4 hover:border-accent transition-colors"
+            className="flex items-center justify-between border border-line rounded-lg bg-surface/50 px-5 py-4 hover:border-accent/50 hover:bg-surface transition-colors"
           >
             <div>
               <p className="font-medium">{applicationTitle(app)}</p>
-              <p className="text-ink-soft text-sm">
+              <p className="text-ink-soft text-xs font-mono">
                 {new Date(app.created_at).toLocaleDateString()}
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-ink-soft">
+              <span className="text-sm text-ink-soft font-mono tabular-nums">
                 {Math.round((app.gap_analysis?.matchRate ?? 0) * 100)}% match
               </span>
               {app.integrity_passed ? (

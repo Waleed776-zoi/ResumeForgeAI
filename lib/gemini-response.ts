@@ -236,8 +236,18 @@ export function outOfTime(deadline: number | undefined, needMs: number) {
 }
 
 export function budgetExhaustedError(attempts: number): GeminiError {
+  // "Tried 0 times" is a nonsense sentence to show a user. Zero attempts and
+  // several failed attempts are different failures and deserve different
+  // explanations.
+  if (attempts === 0) {
+    return new GeminiError(
+      "This step ran out of time before it could start — the earlier steps used the whole request budget. Trying again usually works, since the models are rarely slow twice in a row.",
+      false
+    );
+  }
+
   return new GeminiError(
-    `Gemini was too slow to answer within the time this request is allowed. Tried ${attempts} time${attempts === 1 ? "" : "s"}. This usually means the model is under load — waiting a minute and retrying is the fix.`,
+    `The model didn't answer within the time this request allows. Tried ${attempts} time${attempts === 1 ? "" : "s"}. This usually means it's under load — waiting a minute and retrying is the fix.`,
     false
   );
 }
