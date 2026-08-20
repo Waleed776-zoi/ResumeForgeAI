@@ -108,6 +108,29 @@ const config: Config = {
           from: { transform: "scaleY(0)" },
           to: { transform: "scaleY(1)" },
         },
+        // The rewrite itself. Each word arrives out of focus and settles —
+        // blur is what separates "text being written" from "text fading in",
+        // and it is the whole difference between this reading as a document
+        // transformation and reading as a slideshow.
+        "word-in": {
+          from: {
+            opacity: "0",
+            filter: "blur(5px)",
+            transform: "translateY(4px)",
+          },
+          to: { opacity: "1", filter: "blur(0)", transform: "translateY(0)" },
+        },
+        // Borrowed language turning accent, one phrase at a time. Colour is
+        // animated rather than transitioned so it can share the staged
+        // delay schedule with everything else in the sequence.
+        "mark-posting": {
+          from: { color: "#F2EFE9" },
+          to: { color: "#46A88A" },
+        },
+        "chain-in": {
+          from: { opacity: "0", transform: "translateY(-5px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         // Sweeps a conic arc around a border. Aceternity's original steps a
         // radial gradient between four fixed edges; a continuous rotation
         // reads smoother and needs no JS timer to drive it.
@@ -137,6 +160,10 @@ const config: Config = {
         "rise-in": "rise-in 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both",
         "draw-underline":
           "draw-underline 0.45s cubic-bezier(0.2, 0.7, 0.3, 1) both",
+        "draw-down": "draw-down 0.55s cubic-bezier(0.2, 0.7, 0.3, 1) both",
+        "word-in": "word-in 0.42s cubic-bezier(0.2, 0.7, 0.3, 1) both",
+        "mark-posting": "mark-posting 0.5s ease-out both",
+        "chain-in": "chain-in 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both",
         "accent-pulse": "accent-pulse 2.4s ease-in-out infinite",
         "drift-slow": "drift-slow 54s ease-in-out infinite",
         "drift-slower": "drift-slower 71s ease-in-out infinite",

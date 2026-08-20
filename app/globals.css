@@ -46,6 +46,16 @@
   }
 }
 
+/* Scroll-held motion. See lib/use-reveal.ts: the class is added on mount and
+   removed the moment the element enters the viewport, so the animations are
+   declared in the markup but wait for the reader to arrive. */
+.motion-hold,
+.motion-hold *,
+.motion-hold *::before,
+.motion-hold *::after {
+  animation-play-state: paused;
+}
+
 /* Visible keyboard focus everywhere — accessibility floor, not optional */
 :focus-visible {
   outline: 2px solid theme("colors.accent.DEFAULT");
@@ -63,5 +73,12 @@
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
+    /* Collapsing the DURATION alone is not enough. A staged sequence carries
+       its ordering in animation-delay, and with fill-mode `both` a delayed
+       element holds its 0% keyframe — invisible — for the whole delay. Left
+       in, the reduced-motion reader stares at blank space for two seconds and
+       then everything snaps in at once. Zero the delays too. */
+    animation-delay: 0ms !important;
+    transition-delay: 0ms !important;
   }
 }
