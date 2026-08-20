@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight, ArrowDown, ShieldCheck } from "lucide-react";
 import { SparklesCore } from "@/components/ui/sparkles";
 import { MatchPreview } from "@/components/MatchPreview";
+import { ReplayLink } from "@/components/ReplayLink";
+import { REWRITE_SCENE } from "@/lib/scene-replay";
 
 /**
  * First viewport: the promise, the action, and the proof — in that order,
@@ -92,8 +94,12 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
             />
           </Link>
 
-          <Link
-            href="#how"
+          {/* Not a plain jump link: it restarts the rewrite on arrival, so
+              the label keeps its promise on the second press as well as the
+              first. */}
+          <ReplayLink
+            targetId="how"
+            scene={REWRITE_SCENE}
             className="group inline-flex items-center gap-1.5 text-sm text-ink-soft transition-colors hover:text-accent"
           >
             See a line get rewritten
@@ -102,7 +108,7 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
               className="transition-transform group-hover:translate-y-0.5"
               aria-hidden
             />
-          </Link>
+          </ReplayLink>
         </div>
 
         <p

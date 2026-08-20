@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useRevealOnScroll } from "@/lib/use-reveal";
+import { REWRITE_SCENE } from "@/lib/scene-replay";
+import { useSceneReplay } from "@/lib/use-scene-replay";
 
 /**
  * The product's one claim, performed instead of stated.
@@ -195,10 +196,17 @@ function ProvenanceChain() {
 }
 
 export function TransformationScene() {
-  // Bumping this remounts the animated subtree, which is the whole of the
-  // replay: the elements come back holding their 0% keyframes again.
-  const [run, setRun] = useState(0);
-  const ref = useRevealOnScroll<HTMLDivElement>();
+  // Bumping `run` remounts the animated subtree, which is the whole of the
+  // replay: the elements come back holding their 0% keyframes again. It is
+  // bumped locally by the Replay button and remotely by any ReplayLink
+  // pointing at this scene.
+  const { run, replay } = useSceneReplay(REWRITE_SCENE);
+
+  // Passing `run` re-arms the scroll hold. A replay triggered from the top of
+  // the page therefore waits out the smooth scroll rather than playing to an
+  // empty viewport; a replay triggered while the scene is already on screen
+  // starts immediately.
+  const ref = useRevealOnScroll<HTMLDivElement>({ replayKey: run });
 
   return (
     <div ref={ref}>
@@ -244,7 +252,7 @@ export function TransformationScene() {
         </p>
         <button
           type="button"
-          onClick={() => setRun((n) => n + 1)}
+          onClick={replay}
           className="inline-flex items-center gap-1.5 font-mono text-[11px] text-ink-soft transition-colors hover:text-accent"
         >
           <RotateCcw size={11} aria-hidden />
