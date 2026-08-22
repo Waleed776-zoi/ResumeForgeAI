@@ -21,6 +21,8 @@ export const SCENE_REPLAY_EVENT = "resumeforge:scene-replay";
 
 export const REWRITE_SCENE = "rewrite";
 
+export const READINESS_SCENE = "readiness";
+
 export type SceneReplayDetail = { scene: string };
 
 export function requestSceneReplay(scene: string) {

@@ -4,11 +4,19 @@ import { Check, Loader2 } from "lucide-react";
 import { GENERATION_STAGES, stageIndex, type StageId } from "@/lib/stages";
 
 /**
- * Shows where the pipeline actually is, driven by events the server sends as
- * each step completes — not a timer guessing on its behalf. The steps are
- * named after what the product does ("Fact-checking every claim") because a
- * 20-second wait is the one moment the user is paying full attention to how
- * the thing works.
+ * Shows where the work actually is, driven by events the server sends as each
+ * step completes — not a timer guessing on its behalf. The steps are named
+ * after what the product does for you ("Fact-checking every claim") because a
+ * 20-second wait is the one moment someone is paying full attention to how
+ * the thing works, and it should teach them the product rather than the
+ * stack.
+ *
+ * `model` no longer appears in the copy. It used to read "Currently
+ * answering: GPT-OSS 20B (Groq)", which was the loudest piece of machinery
+ * anywhere in the interface and sat in the one place with a captive audience.
+ * The substitution is still worth being able to see — it just belongs to
+ * whoever is debugging, so it rides along as a data attribute that devtools
+ * shows and no reader ever does.
  */
 export function GenerationProgress({
   current,
@@ -28,6 +36,7 @@ export function GenerationProgress({
       className="panel overflow-hidden"
       role="status"
       aria-live="polite"
+      data-model={model || undefined}
     >
       <div className="h-1 bg-line">
         <div
@@ -68,15 +77,8 @@ export function GenerationProgress({
       </ol>
 
       <p className="px-6 pb-5 text-xs text-ink-soft/80">
-        This usually takes 15–25 seconds — leave this tab open.
-        {model && (
-          <>
-            {" "}
-            Currently answering: <span className="text-ink-soft">{model}</span>.
-            If a model is out of quota the app falls through to the next one
-            automatically.
-          </>
-        )}
+        This usually takes 15–25 seconds — leave this tab open. Nothing is
+        written into your resume that isn't already in the file you uploaded.
       </p>
     </div>
   );

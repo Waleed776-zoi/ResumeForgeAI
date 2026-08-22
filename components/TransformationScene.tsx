@@ -4,6 +4,11 @@ import { RotateCcw } from "lucide-react";
 import { useRevealOnScroll } from "@/lib/use-reveal";
 import { REWRITE_SCENE } from "@/lib/scene-replay";
 import { useSceneReplay } from "@/lib/use-scene-replay";
+import {
+  DEMO_ORIGINAL,
+  DEMO_REWRITE,
+  type DemoSegment,
+} from "@/lib/demo-application";
 
 /**
  * The product's one claim, performed instead of stated.
@@ -30,39 +35,12 @@ import { useSceneReplay } from "@/lib/use-scene-replay";
  *    demonstration of the failure mode the product claims to prevent.
  */
 
-type Mark = "posting" | "kept";
+// Both halves come from the shared demo fixture, so this animation and the
+// readiness score two sections down are describing the same resume.
+type Segment = DemoSegment;
 
-type Segment = {
-  text: string;
-  mark?: Mark;
-  /** Provenance line in the chain. Only marked segments carry one. */
-  note?: string;
-};
-
-const ORIGINAL =
-  "Worked on a medical imaging project. Built the backend and helped get it running in the hospital — about 1.2 s per image.";
-
-const TAILORED: Segment[] = [
-  { text: "Built and " },
-  {
-    text: "deployed a deep learning",
-    mark: "posting",
-    note: "Verb and framing taken from the posting",
-  },
-  { text: " medical imaging system to " },
-  {
-    text: "production",
-    mark: "posting",
-    note: "The word the posting uses for shipped work",
-  },
-  { text: ", holding inference latency at " },
-  {
-    text: "1.2 s per image",
-    mark: "kept",
-    note: "Your own number, carried over unchanged",
-  },
-  { text: "." },
-];
+const ORIGINAL = DEMO_ORIGINAL.experience[0].bullets[0];
+const TAILORED = DEMO_REWRITE;
 
 /*
  * Timing, in milliseconds. Slow enough that the rewrite is legible as it

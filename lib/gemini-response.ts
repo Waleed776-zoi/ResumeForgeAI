@@ -99,10 +99,22 @@ export function isNetworkError(err: unknown): boolean {
   return NETWORK_ERROR_FRAGMENTS.some((f) => message.includes(f));
 }
 
+/** Joins the parts of a message that are present, without double spaces. */
+const sentence = (...parts: Array<string | false | undefined>) =>
+  parts.filter(Boolean).join(" ");
+
 /**
  * Turns an SDK error into something worth putting in front of a person. The
- * raw messages are a URL, a bracketed status and a paragraph of Google prose
+ * raw messages are a URL, a bracketed status and a paragraph of vendor prose
  * — accurate, but not actionable.
+ *
+ * TWO AUDIENCES, TWO REGISTERS. Most of these reach someone who wants their
+ * resume and does not care what is behind the curtain, so they describe what
+ * happened to their work and what to do about it. The handful that only an
+ * operator can act on — a rejected key, a model that is not available to this
+ * project — keep the exact variable and file names, because there the
+ * machinery IS the actionable content and hiding it would just cost whoever
+ * is on call an hour.
  */
 export function describeError(err: unknown, attempts: number): GeminiError {
   if (err instanceof GeminiError) return err;
@@ -112,11 +124,18 @@ export function describeError(err: unknown, attempts: number): GeminiError {
     (status !== undefined && RETRYABLE_STATUSES.has(status)) ||
     isNetworkError(err);
 
-  const tried = `Tried ${attempts} time${attempts === 1 ? "" : "s"}.`;
+  // The attempt count is machinery. What a reader needs to know is that
+  // retrying has already happened on their behalf, so that "try again" is
+  // advice rather than a shrug.
+  const tried = attempts > 1 ? "We already retried automatically." : "";
 
   if (status === 503) {
     return new GeminiError(
-      `The model is under heavy load right now and turned the request away. ${tried} This usually clears within a minute — please try again.`,
+      sentence(
+        "There's too much traffic right now to finish your resume — the request was turned away under heavy load.",
+        tried,
+        "This usually clears within a minute."
+      ),
       true,
       status
     );
@@ -124,7 +143,11 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (status === 429) {
     return new GeminiError(
-      `You've hit the free tier's rate limit. ${tried} Please wait about a minute before generating again.`,
+      sentence(
+        "You've hit the free tier's rate limit.",
+        tried,
+        "Please wait about a minute before generating again."
+      ),
       true,
       status
     );
@@ -132,7 +155,11 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (status === 500 || status === 502 || status === 504) {
     return new GeminiError(
-      `Gemini returned a server error (${status}). ${tried} This is on Google's side — try again shortly.`,
+      sentence(
+        `Something failed upstream while writing your resume (${status}).`,
+        tried,
+        "It isn't anything in your resume — please try again shortly."
+      ),
       true,
       status
     );
@@ -140,7 +167,7 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (status === 400) {
     return new GeminiError(
-      "Gemini rejected the request as malformed. If your resume is unusually long, try trimming it.",
+      "Your resume couldn't be processed in the form it was sent. If it's unusually long, try trimming it and generating again.",
       false,
       status
     );
@@ -148,7 +175,7 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (status === 401 || status === 403) {
     return new GeminiError(
-      "Your GEMINI_API_KEY was rejected. Check the value in .env.local and restart the dev server.",
+      "This app isn't configured correctly — its GEMINI_API_KEY was rejected. Check the value in .env.local and restart the dev server.",
       false,
       status
     );
@@ -156,7 +183,7 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (status === 404) {
     return new GeminiError(
-      "The configured Gemini model is unavailable to this API key. See the re-pinning note in lib/gemini.ts.",
+      "This app isn't configured correctly — the model it's pinned to isn't available to this API key. See the re-pinning note in lib/model-chain.ts, or run `npm run check:models`.",
       false,
       status
     );
@@ -164,7 +191,11 @@ export function describeError(err: unknown, attempts: number): GeminiError {
 
   if (isNetworkError(err)) {
     return new GeminiError(
-      `Couldn't reach Gemini — the network request failed. ${tried} Check your connection and try again.`,
+      sentence(
+        "Couldn't reach the service that writes your resume — the network request failed.",
+        tried,
+        "Check your connection and try again."
+      ),
       true,
       status
     );
@@ -204,7 +235,7 @@ export function parseJsonResponse<T>(raw: string): T {
     }
 
     throw new GeminiError(
-      "Gemini returned output that wasn't valid JSON — usually a response cut short mid-answer.",
+      "The reply came back incomplete — usually an answer cut short partway through. Generating again almost always fixes it.",
       true // a re-roll genuinely tends to fix this
     );
   }
@@ -241,13 +272,17 @@ export function budgetExhaustedError(attempts: number): GeminiError {
   // explanations.
   if (attempts === 0) {
     return new GeminiError(
-      "This step ran out of time before it could start — the earlier steps used the whole request budget. Trying again usually works, since the models are rarely slow twice in a row.",
+      "This step ran out of time before it could start — the earlier steps used the whole request budget. Trying again usually works, since it's rarely slow twice in a row.",
       false
     );
   }
 
   return new GeminiError(
-    `The model didn't answer within the time this request allows. Tried ${attempts} time${attempts === 1 ? "" : "s"}. This usually means it's under load — waiting a minute and retrying is the fix.`,
+    sentence(
+      "This step didn't finish in the time a single request allows.",
+      attempts > 1 ? "We already retried automatically." : "",
+      "That usually means heavy load — waiting a minute and generating again is the fix."
+    ),
     false
   );
 }

@@ -2,11 +2,16 @@ import Link from "next/link";
 import { UploadForm } from "@/components/UploadForm";
 import { Hero } from "@/components/Hero";
 import { TransformationScene } from "@/components/TransformationScene";
+import { Boundaries } from "@/components/Boundaries";
+import { ReadinessPreview } from "@/components/ReadinessPreview";
 import { createClient } from "@/lib/supabase/server";
 
 /**
- * Three screens, in the order a stranger actually needs them: what this is
- * and what to click; how it works on a real line; then the thing itself.
+ * Five screens, in the order a stranger actually needs them: what this is and
+ * what to click; how it rewrites one line; how it scores the result; what it
+ * refuses to do; then the thing itself. The boundaries land last before the form on purpose — it is
+ * the closing argument, and it should be the thought someone is holding when
+ * they reach for their resume file.
  *
  * The shell is max-w-5xl rather than the max-w-3xl the document pages use,
  * because this page argues in pairs — claim beside evidence, explanation
@@ -46,6 +51,19 @@ export default async function HomePage() {
 
           <TransformationScene />
         </div>
+      </section>
+
+      {/* Card on the left this time. Three bands of copy-then-artefact in a
+          row would read as a template; alternating gives the page a spine. */}
+      <section id="readiness" className="mt-28 scroll-mt-24">
+        <ReadinessPreview />
+      </section>
+
+      {/* Full width rather than split: after two paired bands the page needs
+          a change of shape, and this one argues with itself rather than with
+          a diagram beside it. */}
+      <section id="boundaries" className="mt-28 scroll-mt-24">
+        <Boundaries />
       </section>
 
       {/* The form goes back to a narrow measure. Wide inputs read as a form

@@ -40,10 +40,16 @@ const mono = Geist_Mono({
   variable: "--font-mono",
 });
 
+/*
+ * No "AI" in the title. It is the browser tab, the search result and the
+ * link preview — the three places the name is read before anything else —
+ * and the header has said plain "ResumeForge" all along. What the product
+ * runs on is not the product's name.
+ */
 export const metadata: Metadata = {
-  title: "ResumeForge AI",
+  title: "ResumeForge",
   description:
-    "Tailor your resume and cover letter to a specific job — truthfully.",
+    "Tailor your resume and cover letter to a specific job, without inventing anything you didn't do.",
 };
 
 export default function RootLayout({

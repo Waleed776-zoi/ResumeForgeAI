@@ -55,7 +55,7 @@ export async function generateJson<T>({
 
   if (candidates.length === 0) {
     throw new GeminiError(
-      "No AI provider is configured. Set GEMINI_API_KEY (and optionally GROQ_API_KEY) in your environment, then restart.",
+      "This app isn't configured yet — no provider key is set. Add GEMINI_API_KEY (and optionally GROQ_API_KEY) to your environment, then restart.",
       false
     );
   }
@@ -88,7 +88,10 @@ export async function generateJson<T>({
 
   throw (
     lastError ??
-    new GeminiError("Every configured model refused the request.", false)
+    new GeminiError(
+      "Couldn't finish this step — every available option turned the request away. Please try again in a minute.",
+      false
+    )
   );
 }
 
