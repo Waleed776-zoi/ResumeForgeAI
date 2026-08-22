@@ -18,20 +18,7 @@ import { useRevealOnScroll } from "@/lib/use-reveal";
  * approximation of it.
  */
 
-const YOUR_TITLE = "Software Engineer";
-const YOUR_SKILLS = ["Python", "React", "AWS", "Docker", "SQL"];
-
-const ROLE_TITLE = "Machine Learning Engineer";
-const ROLE_SKILLS: Array<{ name: string; matched: boolean }> = [
-  { name: "Python", matched: true },
-  { name: "Docker", matched: true },
-  { name: "AWS", matched: true },
-  { name: "PyTorch", matched: false },
-  { name: "MLOps", matched: false },
-];
-
-const MATCHED = ROLE_SKILLS.filter((s) => s.matched).length;
-const GAPS = ROLE_SKILLS.length - MATCHED;
+export type RoleSkill = { name: string; matched: boolean };
 
 /* Timing, in ms. The card should have finished settling before a reader who
    scrolled straight past it would have noticed it was moving. */
@@ -67,8 +54,21 @@ function Chip({
   );
 }
 
-export function MatchPreview() {
+export function MatchPreview({
+  yourTitle,
+  yourSkills,
+  roleTitle,
+  roleSkills,
+}: {
+  yourTitle: string;
+  yourSkills: string[];
+  roleTitle: string;
+  roleSkills: RoleSkill[];
+}) {
   const ref = useRevealOnScroll<HTMLDivElement>();
+
+  const matched = roleSkills.filter((s) => s.matched).length;
+  const gaps = roleSkills.length - matched;
 
   return (
     <div
@@ -80,10 +80,10 @@ export function MatchPreview() {
         className="mb-3.5 animate-chain-in text-[15px] text-ink"
         style={{ animationDelay: `${YOURS_AT}ms` }}
       >
-        {YOUR_TITLE}
+        {yourTitle}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {YOUR_SKILLS.map((name, i) => (
+        {yourSkills.map((name, i) => (
           <Chip
             key={name}
             name={name}
@@ -107,10 +107,10 @@ export function MatchPreview() {
         className="mb-3.5 animate-chain-in text-[15px] text-ink"
         style={{ animationDelay: `${ROLE_AT}ms` }}
       >
-        {ROLE_TITLE}
+        {roleTitle}
       </p>
       <div className="flex flex-wrap gap-1.5">
-        {ROLE_SKILLS.map((skill, i) => (
+        {roleSkills.map((skill, i) => (
           <Chip
             key={skill.name}
             name={skill.name}
@@ -122,13 +122,13 @@ export function MatchPreview() {
 
       <p
         className="mt-6 animate-chain-in border-t border-line pt-4 text-[12.5px] leading-relaxed text-ink-soft"
-        style={{ animationDelay: `${ROLE_AT + 80 + ROLE_SKILLS.length * STEP}ms` }}
+        style={{ animationDelay: `${ROLE_AT + 80 + roleSkills.length * STEP}ms` }}
       >
         <span className="font-mono text-ink">
-          {MATCHED} of {ROLE_SKILLS.length}
+          {matched} of {roleSkills.length}
         </span>{" "}
         core skills are already in your resume.{" "}
-        <span className="text-flag">{GAPS} are not</span> — so they are
+        <span className="text-flag">{gaps} are not</span> — so they are
         reported as gaps, never written in for you.
       </p>
     </div>

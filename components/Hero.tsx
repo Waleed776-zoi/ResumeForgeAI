@@ -4,6 +4,8 @@ import { SparklesCore } from "@/components/ui/sparkles";
 import { MatchPreview } from "@/components/MatchPreview";
 import { ReplayLink } from "@/components/ReplayLink";
 import { REWRITE_SCENE } from "@/lib/scene-replay";
+import { gapAnalysis } from "@/lib/gap-analysis";
+import { DEMO_ORIGINAL, DEMO_JOB } from "@/lib/demo-application";
 
 /**
  * First viewport: the promise and the action on the left, the proof on the
@@ -21,6 +23,15 @@ import { REWRITE_SCENE } from "@/lib/scene-replay";
  * screen, and printing it twice reads as a page that lost its place.
  */
 export function Hero({ signedIn }: { signedIn: boolean }) {
+  // The real matcher, run on the server: the alias table it consults has no
+  // business in the landing page's bundle, and hand-writing which chips are
+  // green would let the hero disagree with the readiness score further down.
+  const gap = gapAnalysis(DEMO_ORIGINAL.skills, DEMO_JOB.required_skills);
+  const roleSkills = [
+    ...gap.matched.map((name) => ({ name, matched: true })),
+    ...gap.missing.map((name) => ({ name, matched: false })),
+  ];
+
   return (
     <section className="relative pb-4">
       {/*
@@ -121,7 +132,12 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
           </p>
         </div>
 
-        <MatchPreview />
+        <MatchPreview
+          yourTitle={DEMO_ORIGINAL.experience[0].title}
+          yourSkills={DEMO_ORIGINAL.skills}
+          roleTitle={DEMO_JOB.role}
+          roleSkills={roleSkills}
+        />
       </div>
     </section>
   );

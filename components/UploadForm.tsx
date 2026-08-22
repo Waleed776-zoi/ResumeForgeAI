@@ -87,7 +87,7 @@ export function UploadForm() {
         // which means the server was cut off rather than failing — almost
         // always the hosting platform's function time limit.
         throw new Error(
-          "The server ran out of time before finishing. This usually means the AI models were slow to respond on this attempt rather than anything being wrong with your resume — trying again generally works."
+          "This run took too long and was cut off. That is almost always a slow response on our side rather than a problem with your resume — generating again usually works."
         );
       }
     } catch (err) {

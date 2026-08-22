@@ -54,7 +54,35 @@ describe("describeError", () => {
     const described = describeError(REAL_503, 5);
     expect(described.message).not.toContain("generativelanguage.googleapis.com");
     expect(described.message).toContain("heavy load");
-    expect(described.message).toContain("Tried 5 times.");
+    // Says that retrying already happened, without reciting a counter.
+    expect(described.message).toContain("already retried");
+  });
+
+  it("keeps vendor names out of what a reader is shown", () => {
+    // These reach someone who wants their resume, not a status page. The
+    // config errors below are the deliberate exception.
+    for (const attempts of [1, 4]) {
+      for (const err of [REAL_503, new Error("[429 Too Many Requests]"),
+                         new Error("[500 Internal Server Error]"),
+                         new Error("[400 Bad Request]"),
+                         new Error("fetch failed")]) {
+        const message = describeError(err, attempts).message;
+        expect(message).not.toMatch(/gemini|groq|google/i);
+      }
+    }
+  });
+
+  it("still names the variable an operator has to go and fix", () => {
+    // A key problem is only ever fixable by whoever deployed this, and for
+    // them the machinery IS the actionable content.
+    expect(describeError(new Error("[403 Forbidden]"), 1).message).toContain(
+      "GEMINI_API_KEY"
+    );
+  });
+
+  it("does not leave double spaces when there was only one attempt", () => {
+    expect(describeError(REAL_503, 1).message).not.toMatch(/ {2}/);
+    expect(describeError(REAL_503, 1).message).not.toContain("already retried");
   });
 
   it("passes an already-described error straight through", () => {
@@ -112,7 +140,7 @@ describe("outOfTime", () => {
     const almostUp = Date.now() + 500;
     expect(outOfTime(almostUp, MIN_CALL_MS)).toBe(true);
     expect(budgetExhaustedError(3).retryable).toBe(false);
-    expect(budgetExhaustedError(3).message).toContain("Tried 3 times");
+    expect(budgetExhaustedError(3).message).toContain("already retried");
   });
 });
 

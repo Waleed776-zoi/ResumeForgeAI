@@ -22,9 +22,11 @@ export type GenerationEvent =
   // Keeps bytes moving during the long tailoring call so no proxy in the
   // path mistakes a working request for an idle one.
   | { type: "ping" }
-  // Which model actually answered. Worth showing: when the primary is out of
-  // quota the chain silently uses a different one, and silent substitution is
-  // exactly the kind of thing a user should be able to see.
+  // Which model actually answered. Kept because a silent substitution is
+  // worth being able to observe when something looks off — but it reaches the
+  // client as a data attribute, not as copy. See GenerationProgress: naming
+  // vendors at the one moment someone is watching closely sells the stack
+  // instead of the product.
   | { type: "model"; label: string }
   | { type: "done"; applicationId: string }
   | { type: "error"; error: string };
