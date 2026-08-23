@@ -1,5 +1,6 @@
 import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from "pdf-lib";
 import type { TailoredOutput } from "@/lib/types";
+import { coverLetterBlocks, blockLines } from "@/generators/coverLetter";
 import {
   buildResumeDocument,
   type ResumeSection,
@@ -343,52 +344,30 @@ function drawSection(ctx: Ctx, section: ResumeSection) {
   ctx.y -= ctx.t.space.afterSection;
 }
 
-export async function generateResumePdf(
-  tailored: TailoredOutput,
-  originalMeta: ResumeMeta,
-  templateId?: string
-): Promise<Buffer> {
-  const t = resolveTemplate(templateId);
-  const resume = buildResumeDocument(tailored, originalMeta);
-  const doc = await PDFDocument.create();
-
-  const serif = t.family === "serif";
-  const ctx: Ctx = {
-    doc,
-    page: doc.addPage([PAGE.width, PAGE.height]),
-    y: PAGE.height - t.margin,
-    regular: await doc.embedFont(
-      serif ? StandardFonts.TimesRoman : StandardFonts.Helvetica
-    ),
-    bold: await doc.embedFont(
-      serif ? StandardFonts.TimesRomanBold : StandardFonts.HelveticaBold
-    ),
-    italic: await doc.embedFont(
-      serif ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique
-    ),
-    t,
-    contentWidth: PAGE.width - t.margin * 2,
-  };
-
-  doc.setTitle(`${resume.name} — Resume`);
-  doc.setAuthor(resume.name);
-  doc.setProducer("ResumeForge AI");
-
-  // --- Masthead ---
+/**
+ * Name and contact line, in the template's header style.
+ *
+ * Shared by both documents on purpose: a cover letter that mastheads
+ * differently from the resume it accompanies looks like it came from
+ * somewhere else, which is the opposite of what a letterhead is for.
+ */
+function drawMasthead(ctx: Ctx, name: string, contact: string) {
+  const t = ctx.t;
   const centred = t.headerAlign === "center";
+
   ctx.y -= t.size.name;
   drawTracked(
     ctx,
-    t.uppercaseName ? resume.name.toUpperCase() : resume.name,
+    t.uppercaseName ? name.toUpperCase() : name,
     { font: ctx.bold, size: t.size.name, color: INK, tracking: t.tracking.name },
     centred
   );
   ctx.y -= leadingOf(ctx, t.size.contact) + 4;
 
-  if (resume.contact) {
+  if (contact) {
     for (const words of wrap(
       ctx.regular,
-      resume.contact,
+      contact,
       t.size.contact,
       ctx.contentWidth
     )) {
@@ -406,8 +385,95 @@ export async function generateResumePdf(
   }
 
   ctx.y -= t.space.afterMasthead;
+}
+
+/** Builds the drawing context and embeds the template's three faces. */
+async function createContext(doc: PDFDocument, templateId?: string) {
+  const t = resolveTemplate(templateId);
+  const serif = t.family === "serif";
+
+  const ctx: Ctx = {
+    doc,
+    page: doc.addPage([PAGE.width, PAGE.height]),
+    y: PAGE.height - t.margin,
+    regular: await doc.embedFont(
+      serif ? StandardFonts.TimesRoman : StandardFonts.Helvetica
+    ),
+    bold: await doc.embedFont(
+      serif ? StandardFonts.TimesRomanBold : StandardFonts.HelveticaBold
+    ),
+    italic: await doc.embedFont(
+      serif ? StandardFonts.TimesRomanItalic : StandardFonts.HelveticaOblique
+    ),
+    t,
+    contentWidth: PAGE.width - t.margin * 2,
+  };
+
+  return ctx;
+}
+
+export async function generateResumePdf(
+  tailored: TailoredOutput,
+  originalMeta: ResumeMeta,
+  templateId?: string
+): Promise<Buffer> {
+  const resume = buildResumeDocument(tailored, originalMeta);
+  const doc = await PDFDocument.create();
+  const ctx = await createContext(doc, templateId);
+
+  doc.setTitle(`${resume.name} — Resume`);
+  doc.setAuthor(resume.name);
+  doc.setProducer("ResumeForge AI");
+
+  drawMasthead(ctx, resume.name, resume.contact);
 
   for (const section of resume.sections) drawSection(ctx, section);
+
+  return Buffer.from(await doc.save());
+}
+
+/**
+ * Cover letter as its own document — deliberately plainer than the resume.
+ *
+ * A letter is prose: no rules, no tracked headings, no dense two-column role
+ * lines. It gets the resume's letterhead so the pair reads as one submission,
+ * slightly looser leading because uninterrupted prose needs it, and nothing
+ * else. There is also no date line — a letter downloaded today and sent next
+ * week would be dated wrong, and no date is more correct than a stale one.
+ */
+export async function generateCoverLetterPdf(
+  coverLetter: string,
+  meta: ResumeMeta,
+  templateId?: string
+): Promise<Buffer> {
+  const doc = await PDFDocument.create();
+  const ctx = await createContext(doc, templateId);
+  const t = ctx.t;
+
+  const name = meta.name?.trim() || "Candidate";
+  const contact = meta.contact?.trim() ?? "";
+
+  doc.setTitle(`${name} — Cover Letter`);
+  doc.setAuthor(name);
+  doc.setProducer("ResumeForge AI");
+
+  drawMasthead(ctx, name, contact);
+
+  const blocks = coverLetterBlocks(coverLetter);
+
+  blocks.forEach((block, i) => {
+    for (const line of blockLines(block)) {
+      drawParagraph(ctx, line, {
+        size: t.size.body,
+        // Prose is justified like the resume's summary; a stacked block —
+        // salutation, sign-off — never is. Stretching "Sincerely," across
+        // the measure is the loudest possible tell that nobody read it.
+        justify: block.prose,
+      });
+    }
+
+    if (i < blocks.length - 1) ctx.y -= t.size.body * 0.75;
+  });
 
   return Buffer.from(await doc.save());
 }
