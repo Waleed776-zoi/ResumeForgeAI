@@ -39,6 +39,10 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
         as light around the type rather than as a starfield behind the whole
         page. The global Ambience already supplies depth; stacking a second
         full-bleed effect on top of it would be noise, not atmosphere.
+
+        They are off-white, not emerald. Light around type is light; tinting
+        it green spent the accent on a decoration and put a hundred small
+        green dots next to the four places where green is a claim.
       */}
       <div
         aria-hidden
@@ -49,8 +53,8 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
           maxSize={1.1}
           speed={0.7}
           particleDensity={38}
-          particleColor="#46A88A"
-          className="opacity-50"
+          particleColor="#9AA2AD"
+          className="opacity-40"
         />
       </div>
 

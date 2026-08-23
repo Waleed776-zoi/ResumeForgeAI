@@ -3,33 +3,43 @@ import type { Config } from "tailwindcss";
 /**
  * Design direction: graphite + emerald.
  *
- * Dark, precise, quiet. The emerald accent is reserved for verification and
- * for the primary action — the moments where the product either proves
- * something or asks you to commit. Spending it on decoration is what would
- * make it stop meaning anything.
+ * Dark, precise, quiet. The base got a step darker and cooler in this pass,
+ * which buys contrast everywhere at no cost — and the accent got brighter,
+ * which is what lets there be LESS of it.
  *
- * THE ACCENT IS A TWO-STOP RAMP, and the reason matters. A single "deep
- * emerald" cannot do both jobs on a dark base, because an accent used as TEXT
+ * THE ACCENT IS SEMANTIC, NOT DECORATIVE. Emerald means exactly four things
+ * in this product: changed, matched, trusted, confirmed. It is spent on the
+ * verified stamp, the primary action, matched skills, passing checks, and the
+ * phrases a rewrite borrowed. It is NOT spent on background light, on
+ * particles, or on making a link look lively — those were all green once and
+ * are neutral now, because an accent that appears everywhere stops meaning
+ * anything and starts being a brand colour.
+ *
+ * THE ACCENT IS A TWO-STOP RAMP, and the reason matters. A single deep
+ * emerald cannot do both jobs on a dark base, because an accent used as TEXT
  * must be lighter than what it sits on, while an accent used as a FILL must
- * be dark enough for light text to sit on IT. #1F4D3E is darker than the
- * graphite base — as text it measures 1.90:1, effectively invisible — but as
- * a filled stamp under off-white it measures 8.36:1. So it keeps the fill job
- * and a lifted jade of the same hue (160°) takes the text job.
+ * be dark enough for light text to sit on IT. #1E4B40 is darker than the
+ * graphite base — as text it is effectively invisible — but as a filled stamp
+ * under off-white it measures 8.49:1. So it keeps the fill job and a lifted
+ * jade of the same hue takes the text job.
  *
  * Every ratio below is measured, not assumed:
  *
- *   ink    #F2EFE9 on #14151A → 15.9:1   body text
- *   soft   #98A0AD on #14151A →  7.0:1   secondary text
- *   jade   #46A88A on #14151A →  6.3:1   accent text, icons, rules
- *   paper  #14151A on #46A88A →  6.3:1   graphite label on a jade button
- *   ink    #F2EFE9 on #1F4D3E →  8.4:1   off-white on the verified stamp
- *   jade   #46A88A on #16241F →  5.5:1   accent text on a tinted chip
- *   flag   #E5484D on #14151A →  4.7:1   warnings
+ *   ink    #F1EEE8 on #0D0F12 → 16.57:1   body text          (was 15.89)
+ *   soft   #9AA2AD on #0D0F12 →  7.44:1   secondary text     (was  6.92)
+ *   jade   #42B997 on #0D0F12 →  7.88:1   accent text, icons (was  6.28)
+ *   jade   #42B997 on #12161A →  7.46:1   accent on a panel
+ *   paper  #0D0F12 on #42B997 →  7.88:1   graphite on a jade button
+ *   ink    #F1EEE8 on #1E4B40 →  8.49:1   off-white on the verified stamp
+ *   jade   #42B997 on #152720 →  6.42:1   accent text on a tinted chip
+ *   flag   #E5484D on #0D0F12 →  4.90:1   warnings           (was  4.70)
  *
- * The brief specified steel #6B7280 for secondary text, but on this base it
- * lands at 3.8:1 — under the 4.5:1 floor for body copy. It's kept for borders
- * and dividers, where no contrast minimum applies, and secondary TEXT uses a
- * lifted steel that holds the same cool cast while staying readable.
+ * TWO BORDER TOKENS, because WCAG treats them differently. `line` is a
+ * decorative hairline — panel edges, dividers, rules — and has no contrast
+ * minimum. `steel` is for the boundary of a CONTROL, where 1.4.11 wants 3:1
+ * because the border is the only thing telling you where the input is; it
+ * measures 3.97:1 on the base. Reaching for `line` on a text field is the
+ * mistake this split exists to prevent.
  *
  * Note on red/green: warnings are red and verification is green, which is the
  * classic confusable pair. Nothing here relies on hue alone — every state
@@ -41,24 +51,24 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Base graphite, and the raised plane that cards sit on. Two steps
-        // only — more surface levels read as clutter at this scale.
-        paper: "#14151A",
-        surface: "#1B1D23",
-        raised: "#22252C",
+        // Base graphite, and the two raised planes that sit on it. Three
+        // steps only — more surface levels read as clutter at this scale.
+        paper: "#0D0F12",
+        surface: "#12161A",
+        raised: "#161B20",
 
         ink: {
-          DEFAULT: "#F2EFE9", // warm off-white; pure white would go clinical
-          soft: "#98A0AD",
+          DEFAULT: "#F1EEE8", // warm off-white; pure white would go clinical
+          soft: "#9AA2AD",
         },
 
         // Emerald, in two stops. See the note above on why one value can't
         // serve both text and fill against a dark base.
         accent: {
-          DEFAULT: "#46A88A", // jade — text, icons, rules, primary button fill
-          deep: "#1F4D3E", // the verified stamp; carries off-white text
-          soft: "#16241F", // barely-there tint behind accented chips
-          bright: "#5BBF9D", // hover only
+          DEFAULT: "#42B997", // jade — text, icons, rules, primary button fill
+          deep: "#1E4B40", // the verified stamp; carries off-white text
+          soft: "#152720", // barely-there tint behind accented chips
+          bright: "#5BC9A8", // hover only
         },
 
         flag: "#E5484D", // problems; kept clearly red so it reads as a
@@ -69,10 +79,12 @@ const config: Config = {
         // thumbnails must look like the document, not like the app.
         document: "#EFEBE3",
 
-        line: "#282C34", // structural hairlines
-        // BORDERS AND DIVIDERS ONLY. At 3.8:1 on the graphite base this
-        // fails the small-text floor — if you want muted TEXT, reach for
-        // ink-soft (6.9:1), which holds the same cool cast.
+        // DECORATIVE hairlines: panel edges, dividers, rules. No contrast
+        // minimum applies, and none is met — 1.32:1 on the base.
+        line: "#242A30",
+        // CONTROL boundaries: text fields, textareas, the upload dropzone.
+        // 3.97:1 on the base, which clears WCAG 1.4.11's 3:1 floor for a
+        // border that is the only thing delimiting an interactive element.
         steel: "#6B7280",
       },
       fontFamily: {
@@ -124,8 +136,8 @@ const config: Config = {
         // animated rather than transitioned so it can share the staged
         // delay schedule with everything else in the sequence.
         "mark-posting": {
-          from: { color: "#F2EFE9" },
-          to: { color: "#46A88A" },
+          from: { color: "#F1EEE8" },
+          to: { color: "#42B997" },
         },
         "chain-in": {
           from: { opacity: "0", transform: "translateY(-5px)" },

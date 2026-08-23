@@ -56,7 +56,7 @@ function LoginForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com"
-        className="w-full border border-line rounded px-4 py-3 text-sm bg-surface focus:border-accent outline-none"
+        className="w-full border border-steel rounded px-4 py-3 text-sm bg-surface focus:border-accent outline-none"
       />
       {error && (
         <div className="border border-flag/40 bg-flag/5 rounded px-4 py-3 flex gap-3">

@@ -132,7 +132,7 @@ export default async function ResultsPage({
       <div className="border-t border-line pt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-accent hover:opacity-80 transition-opacity font-medium"
+          className="inline-flex items-center gap-1.5 text-ink hover:text-accent transition-colors font-medium"
         >
           <ArrowLeft size={14} />
           Tailor another resume
