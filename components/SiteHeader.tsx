@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ForgeMark } from "@/components/ForgeMark";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * One persistent bar across every page. The wordmark is the way home — the
  * results page previously had no exit at all, leaving the browser back
  * button as the only route out of a finished application.
+ *
+ * The lettering is all ink now. The mark beside it already carries the one
+ * accent stroke it is entitled to, and colouring "Forge" as well would have
+ * spent emerald twice in three centimetres — on identity, which is not one
+ * of the four things green is allowed to mean here.
  *
  * Rendered from the layout, so it reads auth state once per request rather
  * than each page re-deriving it.
@@ -21,12 +26,12 @@ export async function SiteHeader() {
       <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
         <Link
           href="/"
-          className="inline-flex items-center gap-2.5 text-accent hover:opacity-75 transition-opacity"
+          className="inline-flex items-center gap-2.5 text-ink transition-opacity hover:opacity-75"
           aria-label="ResumeForge — back to home"
         >
-          <ShieldCheck size={16} />
-          <span className="font-display text-[19px] tracking-display text-ink">
-            Resume<span className="text-accent">Forge</span>
+          <ForgeMark size={19} />
+          <span className="font-display text-[19px] tracking-display">
+            ResumeForge
           </span>
         </Link>
 
