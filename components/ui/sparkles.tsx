@@ -36,7 +36,7 @@ export function SparklesCore({
   minSize = 0.5,
   maxSize = 1.4,
   speed = 1,
-  particleColor = "#F2EFE9",
+  particleColor = "#F1EEE8",
   particleDensity = 60,
 }: {
   className?: string;

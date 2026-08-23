@@ -121,7 +121,7 @@ export function FileUpload({
         }}
         className={cn(
           "relative overflow-hidden rounded-lg border border-dashed transition-colors duration-300",
-          dragging ? "border-accent/70 bg-accent-soft/40" : "border-line"
+          dragging ? "border-accent/70 bg-accent-soft/40" : "border-steel"
         )}
       >
         <GridPattern active={dragging} />

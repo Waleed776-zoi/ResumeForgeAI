@@ -114,7 +114,7 @@ export function UploadForm() {
           value={jobPostingText}
           onChange={(e) => setJobPostingText(e.target.value)}
           placeholder="Paste the full job description here..."
-          className="w-full border border-line rounded-lg px-4 py-3.5 text-sm bg-surface/70 leading-relaxed placeholder:text-ink-soft/60 focus:border-accent/60 outline-none transition-colors resize-y"
+          className="w-full border border-steel rounded-lg px-4 py-3.5 text-sm bg-surface/70 leading-relaxed placeholder:text-ink-soft/60 focus:border-accent outline-none transition-colors resize-y"
           required
         />
       </div>

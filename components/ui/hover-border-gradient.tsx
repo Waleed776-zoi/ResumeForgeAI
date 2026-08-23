@@ -66,7 +66,7 @@ export function HoverBorderGradient({
           {
             "--sweep-duration": `${duration}s`,
             background:
-              "conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #46A88A 340deg, #5BBF9D 355deg, transparent 360deg)",
+              "conic-gradient(from 0deg, transparent 0deg, transparent 300deg, #42B997 340deg, #5BC9A8 355deg, transparent 360deg)",
           } as React.CSSProperties
         }
       />
