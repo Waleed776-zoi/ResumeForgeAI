@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { generateResumePdf } from "@/generators/exportPdf";
+import {
+  generateResumePdf,
+  generateCoverLetterPdf,
+} from "@/generators/exportPdf";
 import { resolveResumeMeta, exportFilename } from "@/lib/export-meta";
 
 export async function GET(req: NextRequest) {
@@ -20,13 +23,27 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Unrecognised values fall back to the default rather than erroring — a
-  // stale bookmark shouldn't break a download.
-  const buffer = await generateResumePdf(
-    application.tailored_resume_json,
-    resolveResumeMeta(application),
-    req.nextUrl.searchParams.get("template") ?? undefined
-  );
+  // Anything other than the cover letter is the resume — an unrecognised
+  // value falls back rather than erroring, like `template` below.
+  const wantsLetter =
+    req.nextUrl.searchParams.get("doc") === "cover-letter";
+  const template = req.nextUrl.searchParams.get("template") ?? undefined;
+  const meta = resolveResumeMeta(application);
+
+  if (wantsLetter && !application.cover_letter?.trim()) {
+    return NextResponse.json(
+      { error: "This application has no cover letter to download." },
+      { status: 404 }
+    );
+  }
+
+  const buffer = wantsLetter
+    ? await generateCoverLetterPdf(application.cover_letter, meta, template)
+    : await generateResumePdf(
+        application.tailored_resume_json,
+        meta,
+        template
+      );
 
   // Node's Buffer isn't assignable to BodyInit under current TS lib types —
   // hand the Response a plain Uint8Array view instead.
@@ -35,7 +52,8 @@ export async function GET(req: NextRequest) {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${exportFilename(
         application,
-        "pdf"
+        "pdf",
+        wantsLetter ? "cover-letter" : "resume"
       )}"`,
     },
   });

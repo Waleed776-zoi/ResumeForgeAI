@@ -14,6 +14,7 @@ import {
   type ResumeMeta,
 } from "./resumeModel";
 import { resolveTemplate, type ResumeTemplate } from "./templates";
+import { coverLetterBlocks, blockLines } from "./coverLetter";
 
 /**
  * DOCX export, styled from the same template spec as the PDF.
@@ -308,21 +309,32 @@ export async function generateResumeDocx(
  */
 export async function generateCoverLetterDocx(
   coverLetter: string,
-  name: string,
+  meta: { name: string; contact?: string },
   templateId?: string
 ): Promise<Buffer> {
   const t = resolveTemplate(templateId);
   const font = fontFor(t);
 
-  const body = coverLetter
-    .split(/\n{2,}/)
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map(
-      (text) =>
+  const name = meta.name?.trim() || "Candidate";
+  const contact = meta.contact?.trim() ?? "";
+
+  const blocks = coverLetterBlocks(coverLetter);
+
+  const body: Paragraph[] = blocks.flatMap((block, i) => {
+    const lines = blockLines(block);
+
+    return lines.map(
+      (text, line) =>
         new Paragraph({
-          alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: twip(9), line: lineFor(t.leading + 0.1) },
+          // Prose is justified like the resume's summary; a stacked block —
+          // salutation, sign-off — never is. Stretching "Sincerely," across
+          // the measure is the loudest possible tell that nobody read it.
+          alignment: block.prose ? AlignmentType.JUSTIFIED : AlignmentType.LEFT,
+          spacing: {
+            after:
+              line === lines.length - 1 && i < blocks.length - 1 ? twip(9) : 0,
+            line: lineFor(t.leading + 0.1),
+          },
           children: [
             new TextRun({
               text,
@@ -333,6 +345,7 @@ export async function generateCoverLetterDocx(
           ],
         })
     );
+  });
 
   const doc = new Document({
     title: `${name} — Cover Letter`,
@@ -342,26 +355,44 @@ export async function generateCoverLetterDocx(
         properties: {
           page: {
             margin: {
-              top: twip(72),
-              bottom: twip(72),
-              left: twip(72),
-              right: twip(72),
+              top: twip(t.margin),
+              bottom: twip(t.margin),
+              left: twip(t.margin),
+              right: twip(t.margin),
             },
           },
         },
         children: [
           new Paragraph({
-            spacing: { after: twip(14) },
+            spacing: { after: contact ? twip(2) : twip(14) },
             children: [
               new TextRun({
-                text: name,
+                text: t.uppercaseName ? name.toUpperCase() : name,
                 bold: true,
-                size: halfPt(t.size.role),
+                size: halfPt(t.size.name),
                 font,
                 color: INK,
               }),
             ],
           }),
+          // The resume's letterhead, repeated. A cover letter that mastheads
+          // differently from the resume it accompanies looks like it came
+          // from somewhere else.
+          ...(contact
+            ? [
+                new Paragraph({
+                  spacing: { after: twip(16) },
+                  children: [
+                    new TextRun({
+                      text: contact,
+                      size: halfPt(t.size.contact),
+                      font,
+                      color: SOFT,
+                    }),
+                  ],
+                }),
+              ]
+            : []),
           ...body,
         ],
       },

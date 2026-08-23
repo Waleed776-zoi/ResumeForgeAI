@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { HoverHighlight } from "@/components/ui/hover-highlight";
-import {
-  TEMPLATE_LIST,
-  DEFAULT_TEMPLATE,
-  isTemplateId,
-  type TemplateId,
-} from "@/generators/templates";
-
-const STORAGE_KEY = "resumeforge:template";
+import { TEMPLATE_LIST, type TemplateId } from "@/generators/templates";
+import { useTemplatePreference } from "@/lib/use-template-preference";
 
 /**
  * Abstract layout thumbnails.
@@ -96,20 +89,8 @@ function Thumb({ id, active }: { id: TemplateId; active: boolean }) {
 }
 
 export function TemplatePicker({ applicationId }: { applicationId: string }) {
-  const [selected, setSelected] = useState<TemplateId>(DEFAULT_TEMPLATE);
-
-  // Read the stored preference after mount rather than during render: the
-  // server has no localStorage, and reading it during render would make the
-  // first paint disagree with the server's HTML.
-  useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (isTemplateId(stored)) setSelected(stored);
-  }, []);
-
-  function choose(id: TemplateId) {
-    setSelected(id);
-    window.localStorage.setItem(STORAGE_KEY, id);
-  }
+  // Shared with the cover letter panel, so one choice styles both documents.
+  const { selected, choose } = useTemplatePreference();
 
   const href = (format: "pdf" | "docx") =>
     `/api/export/${format}?id=${applicationId}&template=${selected}`;

@@ -36,14 +36,17 @@ export function resolveResumeMeta(application: {
  * and the parser is instructed never to guess one — interpolating that
  * straight into the header produced "resume-null.pdf".
  */
+export type ExportKind = "resume" | "cover-letter";
+
 export function exportFilename(
   application: { company?: string | null; role?: string | null },
-  extension: string
+  extension: string,
+  kind: ExportKind = "resume"
 ): string {
   const slug = (application.company || application.role || "")
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-+|-+$/g, "")
     .toLowerCase();
 
-  return slug ? `resume-${slug}.${extension}` : `resume.${extension}`;
+  return slug ? `${kind}-${slug}.${extension}` : `${kind}.${extension}`;
 }

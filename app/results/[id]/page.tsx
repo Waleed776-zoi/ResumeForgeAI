@@ -3,6 +3,7 @@ import { GapAnalysisPanel } from "@/components/GapAnalysisPanel";
 import { IntegrityBadge } from "@/components/IntegrityBadge";
 import { AtsPanel } from "@/components/AtsPanel";
 import { TemplatePicker } from "@/components/TemplatePicker";
+import { CoverLetterActions } from "@/components/CoverLetterActions";
 import { atsReport } from "@/lib/ats";
 import { ChangeLedgerPanel } from "@/components/ChangeLedgerPanel";
 import { buildChangeLedger } from "@/lib/change-ledger";
@@ -115,6 +116,12 @@ export default async function ResultsPage({
         <p className="text-sm whitespace-pre-line leading-relaxed">
           {application.cover_letter}
         </p>
+
+        {/* Only offered when there is something to download — an export that
+            returns an empty letter is worse than no button. */}
+        {application.cover_letter?.trim() && (
+          <CoverLetterActions applicationId={application.id} />
+        )}
       </section>
 
       <TemplatePicker applicationId={application.id} />
