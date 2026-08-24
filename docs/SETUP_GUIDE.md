@@ -496,7 +496,7 @@ The selection travels as `?template=` on the export URLs and is remembered in
 `localStorage`, so nothing is stored per application and any unrecognised
 value silently falls back to Classic rather than breaking a download.
 
-## What's deliberately NOT built yet (see roadmap for the reasoning)
+## What's deliberately NOT built yet Future Steps
 
 - Browser extension / job-URL scraping
 - Billing/Stripe
