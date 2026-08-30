@@ -5,7 +5,7 @@ import { MatchPreview } from "@/components/MatchPreview";
 import { ReplayLink } from "@/components/ReplayLink";
 import { REWRITE_SCENE } from "@/lib/scene-replay";
 import { gapAnalysis } from "@/lib/gap-analysis";
-import { DEMO_ORIGINAL, DEMO_JOB } from "@/lib/demo-application";
+import type { DemoApplication } from "@/lib/demo-application";
 
 /**
  * First viewport: the promise and the action on the left, the proof on the
@@ -21,12 +21,21 @@ import { DEMO_ORIGINAL, DEMO_JOB } from "@/lib/demo-application";
  *
  * No wordmark above the eyebrow: the sticky header carries it on the same
  * screen, and printing it twice reads as a page that lost its place.
+ *
+ * The example is handed in rather than chosen here, so this card, the rewrite
+ * below it and the readiness score all describe the same candidate.
  */
-export function Hero({ signedIn }: { signedIn: boolean }) {
+export function Hero({
+  signedIn,
+  demo,
+}: {
+  signedIn: boolean;
+  demo: DemoApplication;
+}) {
   // The real matcher, run on the server: the alias table it consults has no
   // business in the landing page's bundle, and hand-writing which chips are
   // green would let the hero disagree with the readiness score further down.
-  const gap = gapAnalysis(DEMO_ORIGINAL.skills, DEMO_JOB.required_skills);
+  const gap = gapAnalysis(demo.original.skills, demo.job.required_skills);
   const roleSkills = [
     ...gap.matched.map((name) => ({ name, matched: true })),
     ...gap.missing.map((name) => ({ name, matched: false })),
@@ -137,9 +146,9 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
         </div>
 
         <MatchPreview
-          yourTitle={DEMO_ORIGINAL.experience[0].title}
-          yourSkills={DEMO_ORIGINAL.skills}
-          roleTitle={DEMO_JOB.role}
+          yourTitle={demo.original.experience[0].title}
+          yourSkills={demo.original.skills}
+          roleTitle={demo.job.role}
           roleSkills={roleSkills}
         />
       </div>

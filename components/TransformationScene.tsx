@@ -4,11 +4,7 @@ import { RotateCcw } from "lucide-react";
 import { useRevealOnScroll } from "@/lib/use-reveal";
 import { REWRITE_SCENE } from "@/lib/scene-replay";
 import { useSceneReplay } from "@/lib/use-scene-replay";
-import {
-  DEMO_ORIGINAL,
-  DEMO_REWRITE,
-  type DemoSegment,
-} from "@/lib/demo-application";
+import type { DemoSegment } from "@/lib/demo-application";
 
 /**
  * The product's one claim, performed instead of stated.
@@ -35,12 +31,23 @@ import {
  *    demonstration of the failure mode the product claims to prevent.
  */
 
-// Both halves come from the shared demo fixture, so this animation and the
-// readiness score two sections down are describing the same resume.
 type Segment = DemoSegment;
 
-const ORIGINAL = DEMO_ORIGINAL.experience[0].bullets[0];
-const TAILORED = DEMO_REWRITE;
+/**
+ * The sentence is chosen once per request by the page and handed down, rather
+ * than imported here. That is what keeps the rotation coherent: a Client
+ * Component picking its own example could not agree with the hero card or the
+ * readiness score, and picking one during render would differ between the
+ * server's HTML and the browser's hydration.
+ */
+export interface TransformationSceneProps {
+  /** The candidate's own line, before tailoring. */
+  original: string;
+  /** The tailored line, split so borrowed phrases can be marked. */
+  rewrite: Segment[];
+  /** Named in the panel label, so the reader knows what it was tailored to. */
+  roleTitle: string;
+}
 
 /*
  * Timing, in milliseconds. Slow enough that the rewrite is legible as it
@@ -56,10 +63,17 @@ const MARK_GAP = 300;
 const countWords = (text: string) =>
   text.trim().split(/\s+/).filter(Boolean).length;
 
-const TOTAL_WORDS = TAILORED.reduce((n, s) => n + countWords(s.text), 0);
-
-/** When the highlight phase begins: after the last word has settled. */
-const MARKS_AT = WRITE_AT + TOTAL_WORDS * PER_WORD + SETTLE_AFTER;
+/**
+ * When the highlight phase begins: after the last word has settled.
+ *
+ * Derived from the sentence rather than fixed, because the rotating examples
+ * are not the same length — a constant tuned to one of them would start
+ * marking a longer sentence while its final words were still arriving.
+ */
+const marksAt = (segments: Segment[]) =>
+  WRITE_AT +
+  segments.reduce((n, s) => n + countWords(s.text), 0) * PER_WORD +
+  SETTLE_AFTER;
 
 /**
  * Splits a run of text into per-word spans on a shared delay schedule, while
@@ -91,13 +105,14 @@ function Words({ text, from }: { text: string; from: number }) {
   );
 }
 
-function TailoredLine() {
+function TailoredLine({ segments }: { segments: Segment[] }) {
+  const MARKS_AT = marksAt(segments);
   let cursor = 0;
   let markIndex = 0;
 
   return (
     <>
-      {TAILORED.map((segment, i) => {
+      {segments.map((segment, i) => {
         const from = cursor;
         cursor += countWords(segment.text);
 
@@ -135,8 +150,9 @@ function TailoredLine() {
   );
 }
 
-function ProvenanceChain() {
-  const marked = TAILORED.filter((s) => s.mark);
+function ProvenanceChain({ segments }: { segments: Segment[] }) {
+  const MARKS_AT = marksAt(segments);
+  const marked = segments.filter((s) => s.mark);
 
   return (
     <ol className="mt-7">
@@ -173,7 +189,11 @@ function ProvenanceChain() {
   );
 }
 
-export function TransformationScene() {
+export function TransformationScene({
+  original,
+  rewrite,
+  roleTitle,
+}: TransformationSceneProps) {
   // Bumping `run` remounts the animated subtree, which is the whole of the
   // replay: the elements come back holding their 0% keyframes again. It is
   // bumped locally by the Replay button and remotely by any ReplayLink
@@ -193,7 +213,7 @@ export function TransformationScene() {
         className="rounded-lg border border-line bg-surface/50 p-6 lg:p-7"
       >
         <p className="eyebrow mb-3 text-ink-soft">What you wrote</p>
-        <p className="text-[15px] leading-[1.7] text-ink-soft">{ORIGINAL}</p>
+        <p className="text-[15px] leading-[1.7] text-ink-soft">{original}</p>
 
         {/* The transformation, drawn rather than labelled with an arrow. */}
         <div className="my-5 ml-px h-7 w-px rounded-full bg-line">
@@ -214,19 +234,22 @@ export function TransformationScene() {
             className="eyebrow mb-3 text-accent animate-chain-in"
             style={{ animationDelay: `${WRITE_AT - 140}ms` }}
           >
-            Tailored — Machine Learning Engineer
+            Tailored — {roleTitle}
           </p>
           <p className="text-[15px] leading-[1.7] text-ink">
-            <TailoredLine />
+            <TailoredLine segments={rewrite} />
           </p>
 
-          <ProvenanceChain />
+          <ProvenanceChain segments={rewrite} />
         </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        {/* Reads the carried-over figure out of the sentence rather than
+            naming one, so the claim stays true for every rotating example. */}
         <p className="font-mono text-[11px] leading-relaxed text-ink-soft">
-          Same employer · same dates · same 1.2 s
+          Same employer · same dates · same{" "}
+          {rewrite.find((s) => s.mark === "kept")?.text ?? "figures"}
         </p>
         <button
           type="button"

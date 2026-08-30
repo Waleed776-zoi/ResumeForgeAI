@@ -1,11 +1,7 @@
 import { atsReport } from "@/lib/ats";
 import { gapAnalysis } from "@/lib/gap-analysis";
 import { ReadinessCard } from "@/components/ReadinessCard";
-import {
-  DEMO_ORIGINAL,
-  DEMO_JOB,
-  DEMO_TAILORED,
-} from "@/lib/demo-application";
+import type { DemoApplication } from "@/lib/demo-application";
 
 /**
  * Runs the real audit on the landing page.
@@ -20,15 +16,15 @@ import {
  * lib/ats.ts returns today for the resume shown further up the page; change a
  * weight in the audit and this section changes with it.
  */
-export function ReadinessPreview() {
-  const gap = gapAnalysis(DEMO_ORIGINAL.skills, DEMO_JOB.required_skills);
+export function ReadinessPreview({ demo }: { demo: DemoApplication }) {
+  const gap = gapAnalysis(demo.original.skills, demo.job.required_skills);
 
   const report = atsReport({
-    tailored: DEMO_TAILORED,
-    job: DEMO_JOB,
+    tailored: demo.tailored,
+    job: demo.job,
     gap,
-    contact: DEMO_ORIGINAL.contact,
-    education: DEMO_ORIGINAL.education,
+    contact: demo.original.contact,
+    education: demo.original.education,
   });
 
   return (
