@@ -5,6 +5,7 @@ import { TransformationScene } from "@/components/TransformationScene";
 import { Boundaries } from "@/components/Boundaries";
 import { ReadinessPreview } from "@/components/ReadinessPreview";
 import { createClient } from "@/lib/supabase/server";
+import { pickDemoApplication } from "@/lib/demo-application";
 
 /**
  * Five screens, in the order a stranger actually needs them: what this is and
@@ -26,9 +27,15 @@ export default async function HomePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // One candidate per request, chosen here and threaded through every
+  // section. Picking it once on the server is what keeps the three
+  // demonstrations in step — and what stops a Client Component rolling a
+  // different example than the HTML it is hydrating.
+  const demo = pickDemoApplication();
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
-      <Hero signedIn={!!user} />
+      <Hero signedIn={!!user} demo={demo} />
 
       {/* The demonstration, moved one screen down so it plays for someone who
           chose to see it. This is what the scroll-hold in lib/use-reveal.ts
@@ -49,14 +56,18 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <TransformationScene />
+          <TransformationScene
+            original={demo.original.experience[0].bullets[0]}
+            rewrite={demo.rewrite}
+            roleTitle={demo.job.role}
+          />
         </div>
       </section>
 
       {/* Card on the left this time. Three bands of copy-then-artefact in a
           row would read as a template; alternating gives the page a spine. */}
       <section id="readiness" className="mt-28 scroll-mt-24">
-        <ReadinessPreview />
+        <ReadinessPreview demo={demo} />
       </section>
 
       {/* Full width rather than split: after two paired bands the page needs

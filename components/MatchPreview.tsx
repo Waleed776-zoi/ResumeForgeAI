@@ -128,7 +128,9 @@ export function MatchPreview({
           {matched} of {roleSkills.length}
         </span>{" "}
         core skills are already in your resume.{" "}
-        <span className="text-flag">{gaps} are not</span> — so they are
+        <span className="text-flag">
+          {gaps} {gaps === 1 ? "is" : "are"} not
+        </span> — so they are
         reported as gaps, never written in for you.
       </p>
     </div>
